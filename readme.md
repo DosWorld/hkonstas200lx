@@ -4,7 +4,7 @@ Hello! I am download and keep this collection source code which
 can help investigate HP 200LX API and have a free GUI (for your
 desktop or application) without propriertal software.
 
-![Image Screenshot](https://github.com/DosWorld/hkonstas200lx/raw/master/dbv.gif)
+![Screenshot](https://github.com/DosWorld/hkonstas200lx/raw/master/dbv.gif)
 
 ## INT5F
 
@@ -25,18 +25,6 @@ graphical user interface as the built-in Application
 Manager of the HP200LX. HDM can also run in DOS, and can
 handle up to 120 applications.
 
-## CheckLOG
-
-CheckLOG - is a checkbook management application designed for
-the HP100LX palmtop.
-
-## DBV
-
-DBView is a database viewer for GDB/NDB/PDB database
-files, having the same look & feel as the built-in
-database application.
-
-
 ## P.A.L  (Palmtop Application Library) Tools
 
 P.A.L. is a Library of C functions that gives DOS programs the look & feel
@@ -47,6 +35,17 @@ Mark Scardina, and the project leader is Gilles Kohl.
 In this archive you will also find the source code for some of the
 utilities I have written using the PAL library, the Pal Font Editor
 (PFE) and the Pal Dialog Editor, PDE.
+
+## DBV
+
+DBView is a database viewer for GDB/NDB/PDB database
+files, having the same look & feel as the built-in
+database application.
+
+## CheckLOG
+
+CheckLOG - is a checkbook management application designed for
+the HP100LX palmtop.
 
 # License 
 
