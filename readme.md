@@ -4,6 +4,8 @@ Hello! I am download and keep this collection source code which
 can help investigate HP 200LX API and have a free GUI (for your
 desktop or application) without propriertal software.
 
+![Image Screenshot](https://github.com/DosWorld/hkonstas200lx/raw/main/dbv.gif)
+
 ## INT5F
 
 INT5F.COM - It's a small TSR (resident program) that enables most
