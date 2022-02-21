@@ -1,0 +1,6005 @@
+;****************************
+;*    HP100LX CHECK-BOOK    *
+;*    by: Harry Konstas     *
+;*       VERSION 3.4        *
+;*      July  28, 1994      *
+;****************************
+
+
+start:  jmp     init
+
+
+;  Configuration Variables
+;--------------------------
+
+maxapn  db      ?               ; Number of Menus
+
+aplno1  db      6               ; Menu 1 #of options
+apkey1  db      1eh             ; Menu 1 hotkey
+ahpos1  dw      14              ; Menu 1 hotkey position
+aplbm1  dw      93              ; Menu 1 right mark
+aplwx1  dw      240             ; Menu 1 window right end
+
+aplno2  db      9               ; Menu 2 #of options
+apkey2  db      14h             ; Menu 2 hotkey
+ahpos2  dw      104             ; Menu 2 hotkey position
+aplbm2  dw      223             ; Menu 2 right mark
+aplwx2  dw      350             ; Menu 2 window right end
+
+aplno3  db      2               ; Menu 3 #of options
+apkey3  db      1fh             ; Menu 3 hotkey
+ahpos3  dw      235             ; Menu 3 hotkey position
+aplbm3  dw      303             ; Menu 3 right mark
+aplwx3  dw      340             ; Menu 3 window right end
+
+aplno4  db      0               ; Menu 4 #of options
+apkey4  db      10h             ; Menu 4 hotkey
+ahpos4  dw      315             ; Menu 4 hotkey position
+aplbm4  dw      364             ; Menu 4 right mark
+aplwx4  dw      0               ; Menu 4 window right end
+
+aplno5  db      2               ; Menu 5 #of options
+apkey5  db      23h             ; Menu 5 hotkey
+ahpos5  dw      375             ; Menu 5 hotkey position
+aplbm5  dw      422             ; Menu 5 right mark
+aplwx5  dw      555             ; Menu 5 window right end
+
+aplno6  db      4               ; Menu 6 #of options
+apkey6  db      23h             ; Menu 6 hotkey
+ahpos6  dw      425             ; Menu 6 hotkey position
+aplbm6  dw      465             ; Menu 6 right mark
+aplwx6  dw      625             ; Menu 6 window right end
+
+
+;   Program Variables
+;-----------------------
+
+index   dw      ?               ; Index pointer
+savinx  dw      3               ; Index saver
+last    dw      ?               ; Last index number
+insdx   dw      ?               ; Index saver
+lastfnd dw      ?               ; Last find
+svalue  dw      ?               ; Search value (check#)
+handle  dw      ?               ; Handle # for I/O operations
+handle2 dw      ?               ; Handle #2
+
+appnum  db      ?               ; Menu number
+optnum  db      ?               ; Option number
+alock   db      ?               ; Lock flag 0=unlocked 1=locked
+apltm1  dw      ?               ; Menu 1 left mark
+apltm2  dw      ?               ; Menu 2 left mark
+apltm3  dw      ?               ; Menu 3 left mark
+apltm4  dw      ?               ; Menu 4 left mark
+apltm5  dw      ?               ; Menu 5 left mark
+apltm6  dw      ?               ; Menu 6 left mark
+aplwy1  dw      ?               ; Menu 1 window V.size
+aplwy2  dw      ?               ; Menu 2 window V.size
+aplwy3  dw      ?               ; Menu 3 window V.size
+aplwy4  dw      ?               ; Menu 4 window V.size
+aplwy5  dw      ?               ; Menu 5 window V.size
+aplwy6  dw      ?               ; Menu 6 window V.size
+
+curency db      "$"             ; Currency symbol
+curenc2 db      " "             ; Currency 2nd symblol
+cursorx dw      0               ; Cursor X position
+cursory dw      0               ; Cursor Y position
+inplen  db      0               ; Input lenght
+inpcnt  db      0               ; Input count
+ascii   db      0               ; Ascii code buffer
+capesc  db      0               ; Input Esc/tab character capture
+echar   dw      0               ; Echo character buffer
+scrflg  db      0               ; Search flag 0=normal 1=ext
+numflg  db      0               ; Numeric input flag
+decflg  db      0               ; Decimal point flag
+insflg  db      0               ; Insert flag
+dspflg  db      0               ; Display type flag 1=note
+
+tab1    dw      0               ; Input TAB 1 saver
+tab2    dw      0               ; Input TAB 2 saver
+tab3    dw      0               ; Input TAB 3 saver
+tab4    dw      0               ; Input TAB 4 saver
+tab5    dw      0               ; Input TAB 5 saver
+eof     db      0               ; End Of File flag
+barnum  db      0               ; Item bar number register 1-12
+paginx  dw      0               ; Page index
+
+month   db      ?               ; Month register
+date    db      ?               ; Date register
+check   dw      ?               ; Check number register
+year    dw      ?               ; Year test
+
+amnt3   db      ?               ; Amount 3 field
+amnt2   db      ?               ; Amount 2 field  ! don't change order
+amnt1   db      ?               ; Amount 1 field
+amnt0   db      ?               ; Amount 0 field
+
+blnc4   db      ?               ; Balance 4 field
+blnc3   db      ?               ; Balance 3 field
+blnc2   db      ?               ; Balance 2 field ! don't change order
+blnc1   db      ?               ; Balance 1 field
+blnc0   db      ?               ; Balance 0 field
+
+curb4   db      ?               ; Current balance 4
+curb3   db      ?               ; Current balance 3
+curb2   db      ?               ; Current balance 2
+curb1   db      ?               ; Current balance 1
+curb0   db      ?               ; Current balance 0
+
+sval3   db      ?               ; Search value 3
+sval2   db      ?               ; Search value 2
+sval1   db      ?               ; Search value 1
+sval0   db      ?               ; Search value 0
+
+transc  db      ?               ; Transaction code
+
+
+;       ******************
+;       * INITIALISATION *
+;       ******************
+
+
+init:   mov     ax,4dd4
+        int     15h             ; check if 100LX
+        cmp     bx,4850h
+        jnz     not100
+        cmp     cx,102h
+        ja      not100
+        jmp     hp100lx
+
+not100: lea     dx,n100mes      ; not running on a 100LX message
+        call    dismes
+        int     20h             ; Exit program  (DOS)
+
+hp100lx:
+        call    openset
+        mov     paginx,1
+        mov     ax,2523h
+        mov     dx,offset cbreak
+        int     21h             ; Disable CTRL-BREAK
+
+        mov     ah,61h
+        mov     al,20h
+        int     15h             ; announc. left
+
+restr:  mov     maxapn,6        ; # maximum menus + 1
+        call    openv
+        call    setgra          ; Set GRAPHICS mode
+        mov     apltm1,0        ; Left startup position
+        mov     barnum,1
+        mov     paginx,1
+        mov     insflg,0
+        mov     alock,1          ; locked by default
+
+        mov     al,curency
+        mov     inpamn+7,al
+        mov     inpbal+8,al
+        mov     inprec+11,al
+        mov     amnsrc+7,al
+
+        mov     al,curenc2
+        mov     inpamn+8,al
+        mov     inpbal+9,al     ; Save currency symbol to message tables
+        mov     inprec+12,al
+        mov     amnsrc+8,al
+
+        mov     cx,16
+        mov     ax,0
+        mov     al,aplno1
+        mul     cx
+        add     ax,29           ; Window
+        mov     aplwy1,ax       ; Auto vertical size
+                                ; calculation
+        mov     ax,0
+        mov     al,aplno2
+        mul     cx
+        add     ax,29
+        mov     aplwy2,ax
+
+        mov     ax,0
+        mov     al,aplno3
+        mul     cx
+        add     ax,29
+        mov     aplwy3,ax
+
+        mov     ax,0
+        mov     al,aplno4
+        mul     cx
+        add     ax,29
+        mov     aplwy4,ax
+
+        mov     ax,0
+        mov     al,aplno5
+        mul     cx
+        add     ax,29
+        mov     aplwy5,ax
+
+        mov     ax,0
+        mov     al,aplno6
+        mul     cx
+        add     ax,29
+        mov     aplwy6,ax
+
+        mov     ax,aplbm1
+        inc     ax
+        mov     apltm2,ax
+
+        mov     ax,aplbm2
+        inc     ax
+        mov     apltm3,ax
+
+        mov     ax,aplbm3
+        inc     ax
+        mov     apltm4,ax
+
+        mov     ax,aplbm4
+        inc     ax
+        mov     apltm5,ax
+
+        mov     ax,aplbm5
+        inc     ax
+        mov     apltm6,ax
+
+
+        lea     di,topmes       ; TOP line
+        call    topline
+        lea     di,botmes1
+        call    botline         ; BOTTOM line
+
+        lea     di,topmes
+        call    topline
+        call    intro
+
+        lea     di,wrksav       ; save work screen
+        call    savescr
+        call    getdate
+
+
+;       ****************
+;       * MAIN ROUTINE *
+;       ****************
+
+
+main:   mov     appnum,1        ; 1st menu
+        mov     optnum,1        ; 1st option
+        call    scode
+        cmp     ah,7ah          ; MENU?
+        je      mn0
+        cmp     ah,38h          ; ALT?
+        jne     mn1
+mn0:    jmp     openapp
+        
+    
+mn1:    cmp     ah,3bh          ; F1  Help
+        jne     mn2
+        call    help
+        lea     di,wrksav
+        call    loadscr
+        jmp     main
+
+mn2:    cmp     ah,3ch          ; F2
+        jne     mn3
+        call    tcheck
+        jmp     main
+
+mn3:    cmp     ah,3dh          ; F3
+        jne     mn4
+        call    deposit
+        jmp     main
+
+mn4:    cmp     ah,3eh          ; F4
+        jne     mn5
+        call    withdraw
+        jmp     main
+
+mn5:    cmp     ah,3fh          ; F5
+        jne     mn6
+        call    transfer
+        jmp     main
+
+mn6:    cmp     ah,40h          ; F6
+        jne     mn7
+        call    service
+        jmp     main
+
+mn7:    cmp     ah,41h          ; F7
+        jne     mn8
+        call    interest
+        jmp     main
+
+mn8:    cmp     ah,43h          ; F9
+        jne     mn8a
+        call    pagup
+        jmp     main
+
+mn8a:   cmp     ah,49h          ; PGUP
+        jne     mn9
+        call    pagup
+        jmp     main
+
+mn9:    cmp     ah,42h          ; F8 balance
+        jne     mn9a
+mn9c:   cmp     last,0
+        je      mn9a
+        call    vbal
+        jmp     main
+mn9a:   cmp     ah,1            ; ESC key
+        jne     mn9b
+        jmp     dos
+
+mn9b:   cmp     ah,4fh          ; END
+        jne     mn10
+        cmp     last,1
+        ja      >m0
+        call    beep
+        jmp     main
+
+m0:     mov     ax,index
+        cmp     last,ax
+        jne     >m1
+        call    beep
+        jmp     main
+m1:     call    itmbar
+        mov     ax,last
+        cmp     ax,12
+        ja      >m2
+        mov     ax,12
+
+m2:     sub     ax,11
+        mov     paginx,ax
+        mov     ax,last
+        mov     index,ax
+        cmp     ax,12
+        ja      >m3
+        mov     barnum,al
+        jmp     >m4
+m3:     mov     barnum,12
+m4:     call    itmbar
+        call    dispage
+        jmp     main
+
+mn10:   cmp     ah,44h          ; F10
+        jne     mn11a
+        call    pagdn
+        jmp     main
+
+mn11a:  cmp     ah,51h          ; PGDN
+        jne     mn11
+        call    pagdn
+        jmp     main
+
+mn11:   cmp     ah,50h          ; Down arrow
+        jne     mn12
+        call    bardn
+        jmp     main
+
+mn12:   cmp     ah,48h          ; Up arrow
+        jne     mn13
+        call    barup
+        jmp     main
+
+mn13:   cmp     ah,0fh          ; TAB
+        jne     mn14
+        cmp     last,0          ; no display if nothing
+        je      mn13b
+        call    display
+        jmp     main
+mn13b:  call    beep
+        jmp     main
+
+mn14:   cmp     ah,2fh          ; View
+        jne     mn15
+        add     dspflg,1
+        cmp     dspflg,3
+        jb      >m1
+        mov     dspflg,0
+m1:     call    dispage
+        jmp     main
+
+mn15:   cmp     ah,53h          ; DEL key
+        jne     mn16
+        call    cancel
+        jmp     main
+
+mn16:   cmp     ah,1ch          ; ENTER  edit
+        jne     mn17
+        call    edit
+        jmp     main
+
+mn17:   cmp     ah,17h          ; [I] key
+        jne     mn18a
+        call    insbet
+        jmp     main
+mn18a:  cmp     ah,52h          ; INS key
+        jne     mn18
+        call    insbet
+        jmp     main
+
+mn18:   cmp     ah,39h          ; SPACE
+        jne     mn19
+        call    tag             ; TAG function
+        jmp     main
+
+mn19:   cmp     ah,47h          ; home
+        jne     mn20
+        cmp     last,1
+        ja      >m1
+        call    beep
+        jmp     main
+m1:     cmp     index,1
+        ja      >m2
+        call    beep
+        jmp     main
+m2:     call    itmbar
+        mov     ax,1
+        mov     paginx,ax
+        mov     ax,1
+        mov     index,ax
+        mov     barnum,1
+        call    itmbar
+        call    dispage
+        jmp     main
+
+mn20:   cmp     ah,255          ; no KEY
+        jne     mn99
+        mov     al,0
+        call    setrule
+        mov     al,1
+        call    setcol
+        jmp     main
+
+mn99:   call    beep            ; other keys
+        jmp     main
+
+
+;       *******************
+;       * EXECUTE OPTIONS *
+;       *******************
+
+execute:
+        lea     di,wrksav
+        call    loadscr         ; restore working screen
+
+
+;---- menu 1 ----
+
+exj0:   cmp     appnum,1
+        jne     exj1
+
+        cmp     optnum,1
+        jne     exj0a
+        call    opninp           ; open file
+        jmp     exend
+exj0a:  cmp     optnum,2
+        jne     exj0b
+        call    newf             ; new file
+        jmp     exend
+exj0b:  cmp     optnum,3
+        jne     exj0c
+        call    extract          ; list file
+        jmp     main
+exj0c:  cmp     optnum,4
+        jne     exj0d
+        call    prnfil           ; print file
+        jmp     main
+exj0d:  cmp     optnum,5
+        jne     exj0e
+        mov     alock,1
+        call    locdis          ; Lock account
+        jmp     main
+exj0e:  cmp     optnum,6
+        jne     exj1
+        mov     alock,0
+        call    unldis          ; unlock account
+        jmp     main
+
+
+;---- menu 2 ----
+
+exj1:   cmp     appnum,2
+        je      >e0
+        jmp     exj2
+e0:     cmp     optnum,1
+        jne     >e1
+        call    edit
+        jmp     main
+e1:     cmp     optnum,2
+        jne     >e21
+        call    cancel
+        jmp     main
+
+e21:    cmp     optnum,3
+        jne     >e2
+        call    insbet
+        jmp     main
+
+e2:     cmp     optnum,4
+        jne     exj1a
+        call    tcheck
+        jmp     main
+exj1a:  cmp     optnum,5
+        jne     exj1b
+        call    deposit
+        jmp     main
+exj1b:  cmp     optnum,6
+        jne     exj1c
+        call    withdraw
+        jmp     main
+exj1c:  cmp     optnum,7
+        jne     exj1d
+        call    transfer
+        jmp     main
+exj1d:  cmp     optnum,8
+        jne     exj1e
+        call    service
+        jmp     main
+exj1e:  cmp     optnum,9
+        jne     exj2
+        call    interest
+        jmp     main
+
+
+;---- menu 3 ----
+
+exj2:   cmp     appnum,3        ; Search
+        jne     exj3
+        cmp     last,12
+        ja      >e1
+        call    beep
+        jmp     exj3
+e1:     cmp     optnum,1
+        jne     exj2a
+        call    seachk
+        jmp     main
+exj2a:  cmp     optnum,2
+        jne     exj2b
+        call    seaamn
+        jmp     main
+exj2b:  cmp     optnum,3
+        jne     exj2c
+        call    beep
+        jmp     exend
+exj2c:  cmp     optnum,4
+        jne     exj3
+        call    beep
+        jmp     exend
+
+;---- menu 4 ----
+
+exj3:   cmp     appnum,4        ; Quit
+        jne     exj4
+        jmp     dos
+
+;---- menu 5 ----
+
+exj4:   cmp     appnum,5        ; Help
+        jne     exj5
+
+        cmp     optnum,1
+        jne     exj4b
+        call    help
+        jmp     exend
+exj4b:  cmp     optnum,2
+        jne     exj5
+        call    about
+        jmp     exend
+
+
+;---- menu 6 ----
+
+exj5:   cmp     appnum,6
+        jne     exj6
+
+        cmp     optnum,1
+        jne     exj5a
+        call    beep
+        jmp     exend
+exj5a:  cmp     optnum,2
+        jne     exj5b
+        call    beep
+        jmp     exend
+exj5b:  cmp     optnum,3
+        jne     exj5c
+        call    beep
+        jmp     exend
+exj5c:  cmp     optnum,4
+        jne     exj6
+        call    beep
+exj6:   jmp     exend
+
+
+exend:  lea     di,wrksav
+        call    loadscr
+        lea     di,topmes
+        call    topline
+        jmp     main
+
+
+;       *************************
+;       * LOCK / UNLOCK DISPLAY *
+;       *************************
+
+locked:
+        call    beep
+        call    lwin
+        mov     cx,220
+        mov     dx,80
+        lea     di,scrmesb
+        call    wrtext
+
+        mov     cx,180
+        mov     dx,100
+        lea     di,scrmesf
+        call    wrtext
+w1:     call    keyav
+        cmp     al,255
+        je      w1
+        cmp     al,16h
+        jne     >w2
+        mov     alock,0
+        lea     di,wrksav
+        call    loadscr
+        jmp     unldis
+
+w2:     lea     di,wrksav
+        call    loadscr
+        ret
+
+locdis: call    lwin
+        mov     cx,190
+        mov     dx,80
+        lea     di,scrmesc
+        jmp     >b0
+
+unldis: call    lwin
+        lea     di,scrmesd
+        mov     cx,180
+        mov     dx,80
+
+b0:     call    wrtext
+        mov     cx,180
+        mov     dx,100
+        lea     di,scrmese
+        call    wrtext
+b1:     call    keyav
+        cmp     al,255
+        je      b1
+        lea     di,wrksav
+        call    loadscr
+        ret
+
+lwin:   lea     di,wrksav
+        call    savescr
+        lea     di,wintop22
+        mov     ax,100
+        mov     bx,50
+        mov     cx,540
+        mov     dx,140
+        call    window
+        ret
+
+
+;       ****************
+;       * DISPLAY PAGE *  current index= paginx
+;       ****************
+
+dispage:
+        mov     ax,index
+        mov     savinx,ax       ; save index
+        call    itmbar
+        cmp     last,0
+        je      >d4
+        mov     ax,paginx
+        call    goindx
+
+        mov     al,8
+        call    setrule
+            
+        mov     cx,12
+        mov     ax,0
+d1:     call    getlin
+        call    convlin
+        inc     al
+        call    prnlin
+
+        push    ax
+        add     ax,paginx
+        cmp     ax,last
+        ja      >d2
+d7:     pop     ax
+        loop    d1
+        jmp     >d4
+
+d2:     pop     ax
+d4:     mov     al,0
+        call    setrule
+        call    seplin
+        call    itmbar
+        mov     ax,savinx
+        mov     index,ax        ; restore index
+        call    goindx
+        call    getlin
+        call    convlin
+        ret
+
+
+;       ****************
+;       * TAG FUNCTION *
+;       ****************
+
+tag:    cmp     last,0
+        jne     >c2
+        call    beep
+        ret
+
+c2:     cmp     alock,1
+        jne     >c3
+        call    locked
+        ret
+
+c3:     lea     di,bufchk
+        mov     al,0
+        mov     cx,81
+t1:     stosb                   ; clear buffers
+        loop    t1
+
+        mov     ax,index
+        call    goindx          ; get current data
+        call    getlin
+
+        mov     al,[linbuf+39]
+        cmp     al,"x"
+        je      >t2
+        mov     byte ptr [linbuf+39],"x"
+        jmp     >t3
+t2:     mov     byte ptr [linbuf+39],4
+
+t3:     mov     ax,index
+        call    goindx
+        call    wrtraw
+
+        mov     ax,index
+        call    goindx          ; get current data
+        call    getlin
+        call    convlin
+        call    itmbar
+        mov     al,barnum
+        call    prnlin
+        call    itmbar
+
+        call    close           ; flush buffer
+        lea     dx,fname1
+        call    openf
+        ret
+
+
+;       ****************
+;       * DISPLAY INFO *  Displays current values
+;       ****************
+
+display:
+        cmp     last,0
+        jne     >b2
+        ret
+
+b2:     lea     di,wrksav
+        call    savescr
+        lea     di,botmes2
+        call    botline
+
+        mov     ax,index
+        call    goindx
+        call    getlin
+        call    convlin
+
+        lea     di,winitem
+        mov     cx,16
+        mov     al,32
+b3:     stosb
+        loop    b3
+
+        lea     di,winitem
+        mov     al,"("
+        stosb
+        mov     ax,index
+        call    binasc
+        mov     al,"/"
+        stosb
+        mov     ax,last
+        call    binasc
+        mov     al,")"
+        stosb
+
+        mov     al,1
+        call    setcol
+        lea     di,wintop5
+        mov     ax,50
+        mov     bx,20
+        mov     cx,590
+        mov     dx,180
+        call    window
+
+        lea     di,datemes
+        mov     si,0
+        mov     bp,0
+        mov     ax,120
+        mov     bx,50
+        mov     cx,6
+        mov     dx,10
+        call    input
+
+        lea     di,inpbuf
+        call    prndat          ; print date
+        mov     al,0
+        stosb
+        lea     di,inpbuf
+        mov     cx,187
+        mov     dx,50
+        call    wrtext
+
+        lea     di,inptyp
+        mov     si,0
+        mov     bp,0
+        mov     ax,320
+        mov     bx,50
+        mov     cx,6
+        mov     dx,13
+        call    input
+
+        call    prntyp
+        mov     di,si
+        mov     cx,387
+        mov     dx,50
+        call    wrtext          ; type
+
+        lea     di,inpchk
+        mov     si,0
+        mov     bp,0
+        mov     ax,110
+        mov     bx,70
+        mov     cx,8
+        mov     dx,5
+        call    input
+                    
+        lea     di,bufchk
+        mov     ax,check
+        call    binasc
+        mov     al,0
+        stosb
+        lea     di,bufchk
+        mov     cx,200
+        mov     dx,70
+        call    wrtext          ; check
+
+        lea     di,inpamn
+        mov     si,0
+        mov     bp,0
+        mov     ax,330
+        mov     bx,70
+        mov     cx,9
+        mov     dx,9
+        call    input
+
+        mov     cl,4
+        mov     ch,1
+        lea     si,amnt3
+        lea     di,bufamn
+        call    bcdstr
+        mov     al,0
+        stosb
+        lea     di,bufamn
+        mov     cx,430
+        mov     dx,70
+        call    wrtext          ; amount
+
+        lea     di,inpbal
+        mov     si,0
+        mov     bp,0
+        mov     ax,210
+        mov     bx,100
+        mov     cx,10
+        mov     dx,12
+        call    input
+   
+        lea     di,bufbal
+        mov     al,32
+        mov     bl,blnc4
+        and     bl,8
+        je      >b4
+        call    adjust
+        call    beep
+        mov     al,"-"
+
+b4:     stosb
+        mov     cl,5
+        mov     ch,1
+        lea     si,blnc4
+        lea     di,bufbal+1
+        call    bcdstr
+        mov     al,0
+        stosb
+        lea     di,bufbal
+        mov     cx,320
+        mov     dx,100
+        call    wrtext
+
+        lea     di,inpname
+        mov     si,0
+        mov     bp,0
+        mov     ax,170
+        mov     bx,130
+        mov     cx,7
+        mov     dx,20
+        call    input
+
+        lea     di,bufnam
+        mov     cx,245
+        mov     dx,130
+        call    wrtext
+
+        lea     di,inpnot
+        mov     si,0
+        mov     bp,0
+        mov     ax,170
+        mov     bx,150
+        mov     cx,7
+        mov     dx,22
+        call    input
+
+        lea     di,bufnot
+        mov     byte ptr [bufnot+22],0           ; clear tag
+        mov     cx,245
+        mov     dx,150
+        call    wrtext
+
+b1:     call    keyav
+        cmp     al,255
+        je      b1
+
+        lea     di,wrksav
+        call    loadscr
+        lea     di,botmes1
+        call    botline
+        ret
+
+
+;       *********************
+;       * PRN FILE CREATION *
+;       *********************
+
+prnfil:
+        cmp     last,0
+        jne     >b2
+        ret
+
+b2:     lea     di,botmes2
+        call    botline
+        lea     di,wrksav
+        call    savescr
+
+        lea     dx,pfname
+        mov     cx,0
+        mov     ah,3ch
+        int     21h                     ; create file
+        mov     handle2,ax
+
+        lea     dx,pfname
+        mov     ah,3dh
+        mov     al,02h                  ;R/W
+        int     21h                     ; open file
+        mov     handle2,ax
+
+        lea     di,wintop16
+        mov     ax,150
+        mov     bx,60
+        mov     cx,490
+        mov     dx,130
+        call    window
+
+        mov     cx,190
+        mov     dx,90
+        lea     di,scrmes3
+        call    wrtext
+
+        lea     dx,header1
+        mov     cx,72           ; 72 bytes header
+        mov     ah,40h
+        mov     bx,handle2
+        int     21h             ; write to file
+
+        mov     index,1
+b5:     mov     ax,index
+        call    goindx
+        call    getlin
+        call    convlin
+        lea     di,lstbuf
+        mov     bp,di
+
+        call    prndat          ; print date
+        mov     al,32
+        stosb
+        stosb
+        call    prntyp
+
+        mov     cx,13
+b9:     lodsb
+        stosb
+        loop    b9
+
+        mov     al,32
+        stosb
+
+        mov     al,"0"
+        mov     bx,check
+        cmp     bx,9
+        ja      >b6
+        stosb
+b6:     cmp     bx,100
+        ja      >b7
+        stosb
+b7:     cmp     bx,1000
+        ja      >b8
+        stosb
+b8:     mov     ax,check
+        call    binasc
+        mov     al,32
+        stosb
+        mov     al,curency
+        stosb
+        mov     al,curenc2
+        stosb
+
+        mov     cl,4
+        mov     ch,1
+        lea     si,amnt3
+        call    bcdstr
+        mov     al,32
+        stosb
+        mov     al,curency
+        stosb
+        mov     al,curenc2
+        stosb
+
+        push    di
+        mov     al,32
+        mov     bl,blnc4
+        and     bl,8
+        je      >b11
+        call    adjust
+        mov     al,"-"
+b11:    pop     di
+        stosb
+
+        mov     cl,5
+        mov     ch,1
+        lea     si,blnc4
+        call    bcdstr
+        mov     al,32
+        stosb
+        stosb
+
+        lea     si,bufnam
+        mov     cx,22
+b3:     lodsb
+        stosb
+        loop    b3
+        mov     al,32
+        stosb
+
+        mov     al,13
+        stosb
+        mov     al,10
+        stosb
+
+        lea     si,lstbuf
+        sub     di,si
+        mov     cx,di
+
+        lea     dx,lstbuf
+        mov     ah,40h
+        mov     bx,handle2
+        int     21h             ; write to file
+
+b1:     inc     index
+        mov     ax,index
+        cmp     ax,last
+        ja      >b4
+        jmp     b5
+
+b4:     mov     ah,3eh
+        mov     bx,handle2
+        int     21h
+
+        lea     di,wrksav
+        call    loadscr
+        lea     di,botmes1
+        call    botline
+        call    pointl
+        ret
+
+
+;       ****************
+;       * EXTRACT INFO *
+;       ****************
+
+extract:
+        cmp     last,0
+        jne     >b2
+        ret
+
+b2:     lea     di,botmes2
+        call    botline
+        lea     di,wrksav
+        call    savescr
+
+        lea     dx,efname
+        mov     cx,0
+        mov     ah,3ch
+        int     21h                     ; create file
+        mov     handle2,ax
+
+        lea     dx,efname
+        mov     ah,3dh
+        mov     al,02h                  ;R/W
+        int     21h                     ; open file
+        mov     handle2,ax
+
+        lea     di,wintop16
+        mov     ax,150
+        mov     bx,60
+        mov     cx,490
+        mov     dx,130
+        call    window
+
+        mov     cx,190
+        mov     dx,90
+        lea     di,scrmes7
+        call    wrtext
+
+        mov     index,1
+b5:     mov     ax,index
+        call    goindx
+        call    getlin
+        call    convlin
+        lea     di,lstbuf
+        mov     bp,di
+
+        mov     al,34
+        stosb
+        call    prndat          ; print date
+        mov     al,34
+        stosb
+
+        mov     al,44
+        stosb
+        mov     al,34
+        stosb
+        call    prntyp
+
+        mov     cx,13
+b9:     lodsb
+        stosb
+        loop    b9
+
+        mov     al,34
+        stosb
+        mov     al,44
+        stosb
+
+        mov     al,34
+        stosb
+        mov     al,"0"
+        mov     bx,check
+        cmp     bx,9
+        ja      >b6
+        stosb
+b6:     cmp     bx,100
+        ja      >b7
+        stosb
+b7:     cmp     bx,1000
+        ja      >b8
+        stosb
+b8:     mov     ax,check
+        call    binasc
+        mov     al,34
+        stosb
+        mov     al,44
+        stosb
+
+        mov     cl,4
+        mov     ch,1
+        lea     si,amnt3
+        call    bcdstr
+        mov     al,44
+        stosb
+
+        push    di
+        mov     al,32
+        mov     bl,blnc4
+        and     bl,8
+        je      >b11
+        call    adjust
+        mov     bl,"-"
+b11:    pop     di
+        stosb
+
+        mov     cl,5
+        mov     ch,1
+        lea     si,blnc4
+        push    bx
+        call    bcdstr
+        pop     bx
+        mov     al,44
+        stosb
+
+        mov     cx,11
+        push    di
+b12:    dec     di
+        mov     al,[di]
+        cmp     al,32
+        je      >b13
+        loop    b12
+b13:    mov     [di],bl
+
+        pop     di
+        mov     al,34
+        stosb
+        lea     si,bufnam
+        mov     cx,20
+b10:    lodsb
+        stosb
+        loop    b10
+        mov     al,34
+        stosb
+        mov     al,44
+        stosb
+
+        mov     al,34
+        stosb
+        lea     si,bufnot
+        mov     cx,22
+b3:     lodsb
+        stosb
+        loop    b3
+
+        mov     al,32
+        stosb
+        mov     al,34
+        stosb
+        mov     al,13
+        stosb
+        mov     al,10
+        stosb
+
+        lea     si,lstbuf
+        sub     di,si
+        mov     cx,di
+
+        lea     dx,lstbuf
+        mov     ah,40h
+        mov     bx,handle2
+        int     21h             ; write to file
+
+b1:     inc     index
+        mov     ax,index
+        cmp     ax,last
+        ja      >b4
+        jmp     b5
+
+b4:     mov     ah,3eh
+        mov     bx,handle2
+        int     21h
+
+        lea     di,wrksav
+        call    loadscr
+        lea     di,botmes1
+        call    botline
+        call    pointl
+        ret
+
+
+;       *************
+;       * EDIT TYPE *
+;       *************
+
+edtype: lea     di,0
+        mov     ax,50
+        mov     bx,30
+        mov     cx,590
+        mov     dx,185
+        call    window
+
+        lea     di,tranmes
+        mov     ax,110
+        mov     bx,48
+        call    putext
+
+        call    prntyp
+        mov     di,si
+        mov     cx,350
+        mov     dx,50
+        call    wrtext          ; type
+
+e0:     call    keyav
+
+        cmp     ah,2eh
+        jne     >e1
+        mov     transc,"C"
+        ret
+e1:     cmp     ah,11h
+        jne     >e2
+        mov     transc,"W"
+        ret
+e2:     cmp     ah,1fh
+        jne     >e3
+        mov     transc,"S"
+        ret
+e3:     cmp     ah,20h
+        jne     >e4
+        mov     transc,"D"
+        ret
+e4:     cmp     ah,14h
+        jne     >e5
+        mov     transc,"T"
+        ret
+e5:     cmp     ah,17h
+        jne     >e6
+        mov     transc,"I"
+        ret
+
+e6:     cmp     ah,1            ; ESC
+        jne     >e7
+        ret
+
+e7:     cmp     ah,1ch          ; ENTER
+        jne     >e8
+        ret
+
+e8:     call    beep
+        jmp     e0
+
+
+;       ****************
+;       * SEARCH CHECK *
+;       ****************
+
+seachk:
+        lea     di,wintop15
+        mov     ax,80
+        mov     bx,60
+        mov     cx,560
+        mov     dx,150
+        call    window
+
+        mov     numflg,1
+        lea     di,chksrc
+        lea     si,searbuf
+        mov     ax,250
+        mov     bx,100
+        mov     cx,7
+        mov     dx,4
+        mov     bp,0
+        call    input
+        mov     al,0
+        mov     numflg,al
+        stosb
+
+        call    setm
+        lea     di,srchmes
+        mov     cx,250
+        mov     dx,120
+        call    wrtext
+
+        mov     cx,5
+        lea     dx,searbuf
+        call    decbin
+        mov     svalue,ax
+        cmp     ax,0
+        je      >f4
+
+        cmp     last,12
+        ja      >f6             ; no search if 1 page
+        lea     di,wrksav
+        call    loadscr
+        ret
+
+
+f6:     call    slpoff          ; power save OFF
+        mov     index,1
+        mov     ax,index
+f2:     call    goindx
+        call    getlin
+        call    convlin
+
+        mov     ax,check
+        cmp     ax,svalue
+        je      >f1
+        inc     index
+        mov     ax,index
+        cmp     ax,last
+        jbe     f2
+f4:     call    slpon
+        lea     di,wrksav
+        call    loadscr
+        call    pointl
+        ret                     ; not found
+
+f1:     call    beep
+        lea     di,wrksav
+        call    loadscr
+        call    display
+        jmp     f4
+
+
+;       *****************
+;       * SEARCH AMOUNT *
+;       *****************
+
+seaamn:
+        lea     di,wintop15
+        mov     ax,80
+        mov     bx,60
+        mov     cx,560
+        mov     dx,150
+        call    window
+
+        mov     numflg,1
+        lea     di,amnsrc
+        lea     si,searbuf
+        mov     ax,220
+        mov     bx,100
+        mov     cx,9
+        mov     dx,11
+        mov     bp,0
+        call    input
+        mov     al,0
+        mov     numflg,al
+        stosb
+
+        call    setm
+        lea     di,srchmes
+        mov     cx,250
+        mov     dx,120
+        call    wrtext
+
+        mov     cx,4
+        lea     si,searbuf
+        lea     di,sval3
+        mov     sval3,0
+        mov     sval2,0
+        mov     sval1,0
+        mov     sval0,0
+        call    ascbcd
+                      
+        cmp     last,12
+        ja      >f6             ; no search if 1 page
+        lea     di,wrksav
+        call    loadscr
+        ret
+
+f6:     call    slpoff          ; power save OFF
+        mov     index,1
+        mov     ax,index
+f2:     call    goindx
+        call    getlin
+        call    convlin
+
+        mov     al,amnt3
+        cmp     al,sval3
+        jne     >f3
+        mov     al,amnt2
+        cmp     al,sval2
+        jne     >f3
+        mov     al,amnt1
+        cmp     al,sval1
+        jne     >f3
+        mov     al,amnt0
+        cmp     al,sval0
+        jne     >f3
+        jmp     >f1
+
+f3:     inc     index
+        mov     ax,index
+        cmp     ax,last
+        jbe     f2
+f4:     call    slpon
+        lea     di,wrksav
+        call    loadscr
+        call    pointl
+        ret                     ; not found
+
+f1:     call    beep
+        lea     di,wrksav
+        call    loadscr
+        call    display
+        jmp     f4
+
+
+;       ********************
+;       * ITEM BAR CONTROL *
+;       ********************
+
+bardn:  call    itmbar
+        inc     index
+        mov     ax,last
+        cmp     ax,index
+        jae     >b1
+        mov     index,ax
+        call    beep
+        call    itmbar
+        ret
+
+b1:     inc     barnum
+        cmp     barnum,12
+        ja      >b2
+        call    itmbar
+        ret
+
+b2:     mov     barnum,12
+        inc     paginx
+        call    itmbar
+        call    dispage
+        ret
+
+
+;----- BAR UP ----
+
+barup:  call    itmbar
+        dec     index
+        cmp     index,0
+        ja      >b1
+        mov     index,1
+        call    beep
+        call    itmbar
+        ret
+
+b1:     dec     barnum
+        cmp     barnum,0
+        je      >b2
+        call    itmbar
+        ret
+
+b2:     mov     barnum,1
+        dec     paginx
+        call    itmbar
+        call    dispage
+        mov     ax,paginx
+        mov     index,ax
+        call    goindx
+        call    getlin
+        call    convlin
+        ret
+
+
+;----- PAGE DOWN -----
+
+pagdn:  call    itmbar
+        cmp     last,12
+        ja      >p3
+        jmp     >p4
+
+p3:     mov     ax,index
+        cmp     ax,last
+        jb      >p2
+p4:     call    beep
+        call    itmbar
+        ret
+
+p2:     mov     ax,paginx
+        add     ax,24
+        cmp     ax,last
+        jbe     >p1
+        mov     ax,last
+        sub     ax,11
+        mov     paginx,ax
+        mov     ax,last
+        mov     index,ax
+        mov     barnum,12
+        call    itmbar
+        call    dispage
+        ret
+
+p1:     add     paginx,12
+        add     index,12
+        call    itmbar
+        call    dispage
+        ret
+
+           
+;---- PAGE UP ----
+
+pagup:
+        call    itmbar
+        mov     ax,paginx
+        cmp     ax,13
+        jae     >p1
+        mov     ax,index
+        cmp     ax,1
+        ja      >p2
+        call    beep
+        call    itmbar
+        ret
+
+p2:     mov     paginx,1
+        mov     index,1
+        mov     barnum,1
+        call    itmbar
+        call    dispage
+        ret
+
+p1:     sub     paginx,12
+        sub     index,12
+        call    itmbar
+        call    dispage
+        ret
+
+
+;       ************************
+;       * ASC to BCD CONVERTER *  SI=input string DI=out CX=Lenght
+;       ************************
+
+ascbcd: push    ax,bx,cx,dx,si,di
+
+        mov     bx,di
+        push    cx
+        dec     cx
+        mov     al,0
+a6:     stosb                   ; clear fields
+        loop    a6
+        pop     cx
+
+        mov     al,"x"
+        mov     decbuf,al       ; mark end
+        mov     entbuf,al
+
+        lea     di,entbuf
+a3:     lodsb
+        cmp     al,"."
+        je      >a1
+        cmp     al,0
+        je      >a2
+        sub     al,48
+        cmp     al,10
+        jb      >a9
+        mov     al,0
+a9:     stosb
+        jmp     a3
+
+
+a2:     mov     al,"x"
+        stosb
+        jmp     pass2
+
+a1:     mov     al,"x"
+        stosb
+        lea     di,decbuf
+a5:     lodsb
+        cmp     al,0
+        je      >a4
+        sub     al,48
+        cmp     al,10
+        jb      >a10
+        mov     al,0
+a10:    stosb
+        jmp     a5
+
+a4:     mov     al,"x"
+        stosb
+
+pass2:  lea     si,decbuf
+        mov     di,bx
+        add     di,cx
+        dec     di
+        lodsb
+        cmp     al,"x"
+        je      >p1
+        mov     ah,al
+        lodsb
+        cmp     al,"x"
+        jne     >p2
+        mov     al,0
+
+p2:     shl     ah,1
+        shl     ah,1
+        shl     ah,1
+        shl     ah,1
+        add     al,ah
+        mov     [di],al
+
+p1:     lea     si,entbuf
+        mov     al,[si]
+        cmp     al,"x"
+        je      >p5
+        mov     di,bx
+        add     di,cx
+        sub     di,2
+p4:     lodsb
+        cmp     al,"x"
+        je      >p3
+        jmp     p4
+
+p3:     sub     si,2
+p6:     mov     al,[si]
+        sub     si,1
+        mov     ah,[si]
+        shl     ah,1
+        shl     ah,1
+        shl     ah,1
+        shl     ah,1
+        add     al,ah
+        mov     [di],al
+
+        cmp     di,bx
+        je      >p5
+        dec     di
+        dec     si
+        jmp     p6
+p5:     pop     di,si,dx,cx,bx,ax
+        ret
+
+
+;       *******************
+;       * CONVERT TO DATA *
+;       *******************
+
+condat2:
+        lea     di,linbuf+2
+        jmp     con2
+
+condata:
+        lea     di,linbuf
+        mov     ax,index
+        stosw
+
+con2:   mov     al,month
+        stosb
+        mov     al,date
+        stosb
+
+        mov     ax,year
+        stosb
+
+        mov     al,transc
+        stosb
+
+        push    di
+        mov     cx,5
+        lea     dx,bufchk
+        call    decbin
+        pop     di
+        stosw
+        
+        push    di
+        mov     cx,4
+        lea     si,bufamn
+        lea     di,amnt3
+        mov     amnt0,0
+        mov     amnt1,0
+        mov     amnt2,0
+        mov     amnt3,0
+        call    ascbcd          ; convert to BCD
+        pop     di
+
+        mov     al,amnt3
+        stosb
+        mov     al,amnt2
+        stosb
+        mov     al,amnt1
+        stosb
+        mov     al,amnt0
+        stosb
+
+        push    di
+        call    calcbal         ;calculate balance
+
+        pop     di
+        mov     al,blnc4
+        stosb
+        mov     al,blnc3
+        stosb
+        mov     al,blnc2
+        stosb
+        mov     al,blnc1
+        stosb
+        mov     al,blnc0
+        stosb
+
+        mov     cx,23
+        lea     si,bufnot
+c1:     lodsb
+        stosb
+        loop    c1
+
+        mov     cx,20
+        lea     si,bufnam
+c2:     lodsb
+        stosb
+        loop    c2
+        ret
+
+
+;       *********************
+;       * CALCULATE BALANCE *
+;       *********************
+
+calcbal:
+        mov     cl,0
+        mov     dl,amnt0
+        mov     al,curb0
+        call    addsub
+        mov     blnc0,al
+
+        mov     dl,amnt1
+        mov     al,curb1
+        call    addsub
+        mov     blnc1,al
+
+        mov     dl,amnt2
+        mov     al,curb2
+        call    addsub
+        mov     blnc2,al
+
+        mov     dl,amnt3
+        mov     al,curb3
+        call    addsub
+        mov     blnc3,al
+
+        mov     dl,0
+        mov     al,curb4
+        call    addsub
+        mov     blnc4,al
+        ret
+
+
+;---- Negative balance adjust ----
+
+adjust:
+        push    ax,bx,cx,dx
+        mov     cl,0
+        mov     dl,blnc0
+        mov     al,0
+        call    subbal
+        mov     blnc0,al
+
+        mov     dl,blnc1
+        mov     al,0
+        call    subbal
+        mov     blnc1,al
+
+        mov     dl,blnc2
+        mov     al,0
+        call    subbal
+        mov     blnc2,al
+
+        mov     dl,blnc3
+        mov     al,0
+        call    subbal
+        mov     blnc3,al
+
+        mov     dl,blnc4
+        mov     al,0
+        call    subbal
+        mov     blnc4,al
+        pop     dx,cx,bx,ax
+        ret
+
+
+;--------- BCD CALCULATION ----------
+
+addsub:
+        cmp     transc,"D"
+        je      addbal
+        cmp     transc,"I"
+        je      addbal
+        jmp     subbal
+
+addbal: push    ax,dx
+        and     al,15
+        and     dl,15
+        clc
+        add     al,cl
+        add     al,dl
+        aaa
+        mov     cl,0
+        jnc     >a1
+        mov     cl,1
+a1:     mov     bl,al           ; save to BX
+        and     bl,15
+        pop     dx,ax
+
+        shr     al,1
+        shr     al,1
+        shr     al,1
+        shr     al,1
+
+        shr     dl,1
+        shr     dl,1
+        shr     dl,1
+        shr     dl,1
+
+        and     al,15
+        and     dl,15
+        clc
+        add     al,cl
+        add     al,dl
+        aaa
+        mov     cl,0
+        jnc     >a2
+        mov     cl,1
+a2:     shl     al,1
+        shl     al,1
+        shl     al,1
+        shl     al,1
+        and     al,0f0h
+        or      al,bl
+        ret
+
+subbal: push    ax,dx
+        and     al,15
+        and     dl,15
+        sub     al,dl
+        mov     ch,0
+        aas
+        jnc     >a3
+        mov     ch,1
+a3:     sub     al,cl
+        mov     cl,0
+        aas
+        jnc     >a1
+        mov     ch,1
+a1:     mov     bl,al           ; save to BX
+        and     bl,15
+        mov     cl,ch
+        mov     ch,0
+        pop     dx,ax
+
+        shr     al,1
+        shr     al,1
+        shr     al,1
+        shr     al,1
+
+        shr     dl,1
+        shr     dl,1
+        shr     dl,1
+        shr     dl,1
+
+        and     al,15
+        and     dl,15
+        sub     al,dl
+        aas
+        jnc     >a4
+        mov     ch,1
+a4:     sub     al,cl
+        mov     cl,0
+        aas
+        jnc     >a2
+        mov     ch,1
+a2:     shl     al,1
+        shl     al,1
+        shl     al,1
+        shl     al,1
+        and     al,0f0h
+        or      al,bl
+        mov     cl,ch
+        mov     ch,0
+        ret
+           
+           
+;       ***********************
+;       * GET CURRENT BALANCE *
+;       ***********************
+
+getbal: cmp     last,0
+        jne     >g1
+        mov     curb0,0
+        mov     curb1,0
+        mov     curb2,0
+        mov     curb3,0
+        mov     curb4,0
+        ret
+
+g1:     mov     ah,42h
+        mov     al,2
+        mov     bx,handle
+        mov     cx,0ffffh
+        mov     dx,-60
+        int     21h             ; last item
+
+        call    getlin
+        call    convlin
+
+        mov     al,blnc0
+        mov     curb0,al
+        mov     al,blnc1
+        mov     curb1,al
+        mov     al,blnc2
+        mov     curb2,al
+        mov     al,blnc3
+        mov     curb3,al
+        mov     al,blnc4
+        mov     curb4,al
+        ret
+
+
+;       ****************
+;       * VIEW BALANCE *
+;       ****************
+
+vbal:   lea     di,botmes2
+        call    botline
+        lea     di,wrksav
+        call    savescr
+        call    slpoff
+        mov     ax,index
+        mov     savinx,ax
+
+        lea     di,wintop14
+        mov     ax,100
+        mov     bx,50
+        mov     cx,540
+        mov     dx,140
+        call    window
+
+        mov     cx,220
+        mov     dx,68
+        lea     di,datemes
+        call    wrtext
+
+        call    getdate
+
+        lea     di,inpbuf
+        call    prndat          ; print date
+        mov     al,0
+        stosb
+        lea     di,inpbuf
+        mov     cx,310
+        mov     dx,68
+        call    wrtext
+
+        call    getbal
+        lea     di,inpbal
+        mov     si,0
+        mov     bp,0
+        mov     ax,200
+        mov     bx,90
+        mov     cx,10
+        mov     dx,12
+        call    input
+   
+        lea     di,bufbal
+        mov     al,32
+        mov     bl,curb4
+        and     bl,8
+        je      >b3
+
+        mov     al,curb4
+        mov     blnc4,al
+        mov     al,curb3
+        mov     blnc3,al
+        mov     al,curb2
+        mov     blnc2,al
+        mov     al,curb1
+        mov     blnc1,al
+        mov     al,curb0
+        mov     blnc0,al
+
+        call    adjust
+        mov     al,blnc4
+        mov     curb4,al
+        mov     al,blnc3
+        mov     curb3,al
+        mov     al,blnc2
+        mov     curb2,al
+        mov     al,blnc1
+        mov     curb1,al
+        mov     al,blnc0
+        mov     curb0,al
+        call    beep
+
+        mov     al,"-"
+b3:     stosb
+        mov     cl,5
+        mov     ch,1
+        lea     si,curb4
+        lea     di,bufbal+1
+        call    bcdstr
+        mov     al,0
+        stosb
+        lea     di,bufbal
+        mov     cx,310
+        mov     dx,90
+        call    wrtext
+
+        call    reconc
+b1:     call    keyav
+        cmp     al,255
+        je      b1
+
+        lea     di,wrksav
+        call    loadscr
+        call    slpon           ; power save ON
+
+        mov     ax,savinx
+        mov     index,savinx
+        lea     di,botmes1
+        call    botline
+        ret
+
+
+
+        cmp     last,12
+        ja      >b2
+        call    itmbar
+        mov     ax,last
+        mov     barnum,al
+        call    itmbar
+        call    dispage
+        lea     di,botmes1
+        call    botline
+        call    slpon
+        ret
+
+b2:     call    itmbar
+        mov     ax,last
+        sub     ax,11
+        mov     paginx,ax
+        mov     ax,last
+        mov     index,ax
+        mov     barnum,12
+        call    itmbar
+
+        call    dispage
+        lea     di,botmes1
+        call    botline
+        call    slpon
+        ret
+
+
+;       **********************
+;       * RECONCILED BALANCE *
+;       **********************
+
+reconc:
+        lea     di,inprec
+        mov     si,0
+        mov     bp,0
+        mov     ax,170
+        mov     bx,115
+        mov     cx,13
+        mov     dx,12
+        call    input
+
+calcrec:
+        mov     curb4,0
+        mov     curb3,0
+        mov     curb2,0
+        mov     curb1,0
+        mov     curb0,0
+
+        mov     index,1
+b5:     mov     ax,index
+        call    goindx
+        call    getlin
+        call    convlin
+        cmp     byte ptr [linbuf+39],"x"
+        je      >b1
+
+        call    calcbal
+        mov     al,blnc0
+        mov     curb0,al
+        mov     al,blnc1
+        mov     curb1,al
+        mov     al,blnc2
+        mov     curb2,al
+        mov     al,blnc3
+        mov     curb3,al
+        mov     al,blnc4
+        mov     curb4,al
+
+b1:     inc     index
+        mov     ax,index
+        cmp     ax,last
+        ja      disrec
+        jmp     b5
+
+disrec: lea     di,bufbal
+        mov     al,32
+        mov     bl,curb4
+        and     bl,8
+        je      >b3
+
+        mov     al,curb4
+        mov     blnc4,al
+        mov     al,curb3
+        mov     blnc3,al
+        mov     al,curb2
+        mov     blnc2,al
+        mov     al,curb1
+        mov     blnc1,al
+        mov     al,curb0
+        mov     blnc0,al
+
+        call    adjust
+        mov     al,blnc4
+        mov     curb4,al
+        mov     al,blnc3
+        mov     curb3,al
+        mov     al,blnc2
+        mov     curb2,al
+        mov     al,blnc1
+        mov     curb1,al
+        mov     al,blnc0
+        mov     curb0,al
+        call    beep
+
+        mov     al,"-"
+b3:     stosb
+        mov     cl,5
+        mov     ch,1
+        lea     si,curb4
+        lea     di,bufbal+1
+        call    bcdstr
+        mov     al,0
+        stosb
+        lea     di,bufbal
+        mov     cx,310
+        mov     dx,115
+        call    wrtext
+        ret
+
+
+;       *********************
+;       * GET STRING LENGHT *  SI> string offs. CX=Lenght
+;       *********************
+
+getslen:
+        push    ax,bx
+        mov     cx,65500
+        mov     bx,0
+g2:     lodsb
+        cmp     al,0
+        je      >g1
+        inc     bx
+        loop    g2
+g1:     mov     cx,bx
+        pop     bx,ax
+        ret
+
+
+;       ************************
+;       * GET PREVIOUS BALANCE *
+;       ************************
+
+getprev:
+        mov     ax,index
+        push    ax              ; save index
+        cmp     index,1
+        jne     >e3
+
+g1:     mov     blnc4,0
+        mov     blnc3,0
+        mov     blnc2,0
+        mov     blnc1,0
+        mov     blnc0,0
+        call    goindx
+        call    getlin
+        jmp     >e4
+
+e3:     mov     ax,index
+        dec     ax
+        call    goindx
+        call    getlin          ; get previous line
+        call    convlin
+
+e4:     pop     ax
+        mov     index,ax        ; restore index
+
+        mov     al,blnc4
+        mov     curb4,al
+        mov     al,blnc3
+        mov     curb3,al
+        mov     al,blnc2
+        mov     curb2,al
+        mov     al,blnc1        ; get previous balance
+        mov     curb1,al
+        mov     al,blnc0
+        mov     curb0,al
+        ret
+
+
+;       *****************
+;       * EDIT AN ENTRY *
+;       *****************
+
+edit:   cmp     last,0
+        jne     >e2
+        call    beep
+        ret
+
+e2:     cmp     alock,1
+        jne     >e3
+        jmp     display
+
+e3:     lea     di,wrksav
+        call    savescr
+        lea     di,botmes3
+        call    botline
+
+edit2:  lea     di,bufchk
+        mov     al,0
+        mov     cx,81
+t1:     stosb                   ; clear buffers
+        loop    t1
+      
+        call    getprev         ; get previous balance
+        mov     ax,index
+        call    goindx          ; get current data
+        call    getlin
+        call    convlin
+
+        cmp     insflg,1
+        jne     >b4
+        mov     amnt0,0
+        mov     amnt1,0
+        mov     amnt2,0
+        mov     amnt3,0
+        mov     transc,"S"
+        mov     check,0
+
+        lea     di,bufchk
+        mov     al,0
+        mov     cx,81
+t9:     stosb                   ; clear buffers
+        loop    t9
+                  
+b4:     lea     di,winitem2
+        mov     cx,16
+        mov     al,32
+b3:     stosb
+        loop    b3
+
+        lea     di,winitem2
+        mov     al,"("
+        stosb
+        mov     ax,index
+        call    binasc
+        mov     al,"/"
+        stosb
+        mov     ax,last
+        call    binasc
+        mov     al,")"
+        stosb
+
+        lea     di,wintop21
+        cmp     insflg,1
+        je      >b7
+
+        lea     di,wintop17
+b7:     call    tmpscr
+        cmp     insflg,1
+        je      >b5
+        call    conamn          ; convert amount+check to string
+
+b5:     mov     cx,196
+        mov     dx,90
+        lea     di,bufamn
+        call    wrtext
+
+        mov     cx,382
+        mov     dx,90
+        lea     di,bufchk
+        call    wrtext
+
+        mov     cx,222
+        mov     dx,120
+        lea     di,bufnam
+        call    wrtext
+
+        mov     dx,150
+;        mov     byte ptr [bufnot+22],0          ; clear TAG
+        lea     di,bufnot
+        call    wrtext
+
+        lea     si,bufamn
+        call    getslen
+        mov     tab1,cx
+        lea     si,bufchk
+        call    getslen
+        mov     tab2,cx
+        lea     si,bufnam
+        call    getslen
+        mov     tab3,cx
+        lea     si,bufnot
+        call    getslen
+        mov     tab4,cx
+        mov     tab5,10
+
+        call    tmpent2
+
+        cmp     capesc,27
+        je      >b1
+        call    edtype
+        cmp     insflg,1
+        je      >b6
+        call    update
+
+        lea     di,wrksav
+        call    loadscr
+        call    pointl
+b6:     ret
+
+b1:     lea     di,wrksav
+        call    loadscr
+        ret
+
+
+
+;       *******************
+;       * CANCEL AN ENTRY *
+;       *******************
+
+cancel: cmp     last,0
+        jne     >c2
+        call    beep
+        ret
+
+c2:     cmp     alock,1
+        jne     >c3
+        call    locked
+        ret
+
+c3:     lea     di,wrksav
+        call    savescr
+        lea     di,botmes3
+        call    botline
+
+        lea     di,wintop18
+        mov     ax,90
+        mov     bx,50
+        mov     cx,540
+        mov     dx,140
+        call    window
+
+        mov     cx,105
+        mov     dx,90
+        lea     di,scrmes8
+        call    wrtext
+
+
+b2:     call    keyav
+        cmp     ah,255
+        je      b2
+        cmp     ah,44h          ; F10
+        jne     >b1
+
+        lea     di,bufchk
+        mov     al,0
+        mov     cx,81
+t1:     stosb                   ; clear buffers
+        loop    t1
+
+        call    getprev
+        mov     ax,index
+        call    goindx          ; get current data
+        call    getlin
+        call    convlin
+        mov     transc,"x"
+        mov     byte ptr linbuf+5,"x"    ; cancel
+
+        call    update
+
+        lea     di,wrksav
+        call    loadscr
+        lea     di,botmes1
+        call    botline
+        call    pointl
+        ret
+
+b1:     lea     di,wrksav
+        call    loadscr
+        lea     di,botmes1
+        call    botline
+        ret
+
+
+
+;       **************************
+;       * UPDATE BALANCE HISTORY *
+;       **************************
+
+update:
+        lea     di,wintop19
+        mov     ax,90
+        mov     bx,50
+        mov     cx,540
+        mov     dx,140
+        call    window
+
+        mov     cx,135
+        mov     dx,90
+        lea     di,scrmes9
+        call    wrtext
+
+update2:
+        call    slpoff
+        call    close           ; flush buffer
+        lea     dx,fname1
+        call    openf
+
+u1:     mov     ax,index
+        call    goindx
+        call    calnb           ; write new balance
+        cmp     last,1
+        je      >u2
+        mov     ax,index
+        cmp     ax,last
+        je      >u3
+        call    getlin
+        call    convlin
+        call    conamn          ; convert amount + check to string
+        jmp     u1
+u2:     call    calnb
+u4:     call    close           ; flush buffer
+        lea     dx,fname1
+        call    openf
+        call    slpon
+        ret
+
+u3:     mov     ax,index
+        call    goindx
+        jmp     u4
+
+
+;------- Calculate New Balance -------
+
+calnb:
+        cmp     transc,"x"
+        jne     >u3             ; Cancelled ?
+        mov     amnt0,0
+        mov     amnt1,0
+        mov     amnt2,0
+        mov     amnt3,0
+        call    conamn          ; convert amount to string
+
+u3:     call    condat2         ; convert to bin. data + calc balance
+        lea     dx,linbuf
+        mov     cx,60
+        call    writef          ; write to file
+        
+        mov     al,blnc4
+        mov     curb4,al
+        mov     al,blnc3
+        mov     curb3,al        ; save current balance
+        mov     al,blnc2
+        mov     curb2,al
+        mov     al,blnc1
+        mov     curb1,al
+        mov     al,blnc0
+        mov     curb0,al
+        ret
+
+
+;----- Convert amount --------
+
+conamn: mov     cl,4
+        mov     ch,1
+        lea     si,amnt3
+        lea     di,bufamn
+        call    bcdstr
+        mov     al,0
+        stosb
+
+        lea     si,bufamn
+        lea     di,bufamn
+u2:     lodsb
+        cmp     al,32           ; eliminate spaces
+        je      u2
+u3:     stosb
+        lodsb
+        cmp     al,0
+        jne     u3
+        stosb
+
+        lea     di,bufchk
+        mov     ax,check
+        call    binasc
+        mov     al,0
+        stosb
+        ret
+
+
+;       ***********
+;       * DEPOSIT *
+;       ***********
+
+deposit:
+        mov     ax,index
+        push    ax
+        call    getbal
+        pop     ax
+        mov     index,ax
+
+        mov     transc,"D"
+        lea     di,wrksav
+        call    savescr
+        lea     di,wintop4
+        call    getdate
+
+        call    tmpscr
+        call    tmpinp
+        cmp     capesc,27
+        je      >b1
+        call    insert
+
+b1:     lea     di,wrksav
+        call    loadscr
+        call    pointl
+        ret
+
+
+;       **************
+;       * WITHDRAWAL *
+;       **************
+
+withdraw:
+        mov     ax,index
+        push    ax
+        call    getbal
+        pop     ax
+        mov     index,ax
+
+        mov     transc,"W"
+        lea     di,wrksav
+        call    savescr
+        lea     di,wintop6
+        call    getdate
+        call    tmpscr
+        call    tmpinp
+        cmp     capesc,27
+        je      >b1
+        call    insert
+
+b1:     lea     di,wrksav
+        call    loadscr
+        call    pointl
+        ret
+
+
+;       ***********
+;       * SERVICE *
+;       ***********
+
+service:
+        mov     ax,index
+        push    ax
+        call    getbal
+        pop     ax
+        mov     index,ax
+
+        mov     transc,"S"
+        lea     di,wrksav
+        call    savescr
+        lea     di,wintop8
+        call    getdate
+        call    tmpscr
+        call    tmpinp
+        cmp     capesc,27
+        je      >b1
+        call    insert
+
+b1:     lea     di,wrksav
+        call    loadscr
+        call    pointl
+        ret
+
+
+;       ************
+;       * TRANSFER *
+;       ************
+
+transfer:
+        mov     ax,index
+        push    ax
+        call    getbal
+        pop     ax
+        mov     index,ax
+
+        mov     transc,"T"
+        lea     di,wrksav
+        call    savescr
+        lea     di,wintop7
+        call    getdate
+        call    tmpscr
+        call    tmpinp
+        cmp     capesc,27
+        je      >b1
+        call    insert
+
+b1:     lea     di,wrksav
+        call    loadscr
+        call    pointl
+        ret
+
+
+;       *********
+;       * CHECK *
+;       *********
+
+tcheck:
+        mov     ax,index
+        push    ax
+        call    getbal
+        pop     ax
+        mov     index,ax
+
+        mov     transc,"C"
+        lea     di,wrksav
+        call    savescr
+        lea     di,wintop9
+        call    getdate
+        call    tmpscr
+        call    tmpinp
+        cmp     capesc,27
+        je      >b1
+        call    insert
+
+b1:     lea     di,wrksav
+        call    loadscr
+        call    pointl
+        ret
+
+
+;       ************
+;       * INTEREST *
+;       ************
+
+interest:
+        mov     ax,index
+        push    ax
+        call    getbal
+        pop     ax
+        mov     index,ax
+
+        mov     transc,"I"
+        lea     di,wrksav
+        call    savescr
+        lea     di,wintopa
+        call    getdate
+        call    tmpscr
+        call    tmpinp
+        cmp     capesc,27
+        je      >b1
+        call    insert
+
+b1:     lea     di,wrksav
+        call    loadscr
+        call    pointl
+        ret
+
+
+;       *******************
+;       * INSERT NEW ITEM *
+;       *******************
+
+insert:
+        call    close
+        lea     dx,fname1
+        call    openf
+        mov     ah,42h
+        mov     al,2
+        mov     bx,handle
+        mov     cx,0
+        mov     dx,0
+        int     21h             ; end of file
+
+        mov     ax,last
+        inc     ax
+        mov     last,ax
+
+
+;----- WRITE LINE ------
+
+wrtlin: mov     index,ax
+        call    condata                 ; convert to data
+        cmp     byte ptr[linbuf+39],4   ; already tagged ?
+        je      wrtraw
+        mov     byte ptr[linbuf+39],"x" ; untag by default
+wrtraw: lea     dx,linbuf
+        mov     cx,60
+        call    writef                  ; write to file
+        call    close
+        lea     dx,fname1
+        call    openf
+        ret
+
+
+;       ******************
+;       * INSERT BETWEEN *
+;       ******************
+
+insbet: cmp     last,0
+        jne     >e2
+        call    beep
+        ret
+
+e2:     lea     di,wrksav
+        call    savescr
+        lea     di,botmes3
+        call    botline
+
+        mov     ax,index
+        mov     insdx,ax        ; save current index
+
+        mov     insflg,1        ; insert flag
+        call    edit2
+        mov     insflg,0
+        cmp     capesc,27
+        jne     >t2
+        ret
+
+t2:     lea     di,wintop20
+        mov     ax,90
+        mov     bx,50
+        mov     cx,540
+        mov     dx,140
+        call    window
+
+        mov     cx,135
+        mov     dx,90
+        lea     di,scrmesa
+        call    wrtext
+
+        call    close           ; flush buffer
+        lea     dx,fname1
+        call    openf
+
+        lea     si,linbuf
+        mov     ax,last
+        mov     index,ax
+        jmp     >i3
+
+i1:     sub     index,1
+        mov     ax,index
+i3:     call    goindx
+        call    getlin
+        mov     ax,[si]
+        inc     ax
+        mov     [si],ax
+        call    wrtraw
+        mov     ax,insdx
+        cmp     ax,last
+        je      >i2
+        mov     ax,index
+        cmp     insdx,ax
+        jb      i1
+
+i2:     inc     last
+        mov     ax,insdx
+        mov     index,ax
+        lea     di,linbuf
+        mov     [di],ax
+        call    goindx
+        call    condata
+        call    wrtraw
+        call    update
+
+        lea     di,wrksav
+        call    loadscr
+        call    pointl
+        ret
+
+
+
+;       *****************
+;       * POINT TO LAST *
+;       *****************
+
+pointl: cmp     last,12
+        ja      >i1
+        cmp     capesc,27
+        je      >i2
+        call    itmbar
+        mov     ax,last
+        mov     barnum,al
+        call    itmbar
+        call    dispage
+i2:     ret
+
+i1:     call    itmbar
+        mov     ax,last
+        sub     ax,11
+        mov     paginx,ax
+        mov     ax,last
+        mov     index,ax
+        mov     barnum,12
+        call    itmbar
+        call    dispage
+        ret
+
+
+;       ******************
+;       * TEMPLATE ENTRY *
+;       ******************
+
+tmpinp: mov     tab1,0
+        mov     tab2,0
+        mov     tab3,0
+        mov     tab4,0
+
+        lea     di,bufchk
+        mov     al,0
+        mov     cx,81
+t1:     stosb                   ; clear buffers
+        loop    t1
+
+tmpent2:
+        mov     tab5,10         ; DATE TAB
+        lea     di,botmes3
+        call    botline
+
+        lea     di,inpamn
+        lea     si,bufamn
+        mov     bp,tab1
+        mov     ax,104
+        mov     bx,90
+        mov     cx,9
+        mov     dx,9
+        mov     numflg,1
+        call    input
+        mov     numflg,0
+        mov     bh,0
+        mov     bl,inpcnt
+        mov     tab1,bx
+        cmp     capesc,"o"
+        jne     >b21
+        call    revok
+        jmp     ad99
+b21:    cmp     capesc,27
+        jne     >b1
+        call    revcan
+        jmp     ad99
+
+b1:     lea     di,inpchk
+        lea     si,bufchk
+        mov     bp,tab2
+        mov     ax,300
+        mov     bx,90
+        mov     cx,8
+        mov     dx,4
+        mov     numflg,1
+        call    input
+        mov     numflg,0
+        mov     bh,0
+        mov     bl,inpcnt
+        mov     tab2,bx
+        cmp     capesc,"o"
+        jne     >b20
+        call    revok
+        jmp     ad99
+b20:    cmp     capesc,27
+        jne     >b2
+        call    revcan
+        jmp     ad99
+
+b2:     lea     di,inpname
+        lea     si,bufnam
+        mov     bp,tab3
+        mov     ax,160
+        mov     bx,120
+        mov     cx,6
+        mov     dx,20
+        call    input
+        mov     bh,0
+        mov     bl,inpcnt
+        mov     tab3,bx
+        cmp     capesc,"o"
+        jne     >b22
+        call    revok
+        jmp     ad99
+b22:    cmp     capesc,27
+        jne     >b11
+        call    revcan
+        jmp     ad99
+
+b11:    lea     di,inpnot
+        lea     si,bufnot
+        mov     bp,tab4
+        mov     ax,160
+        mov     bx,150
+        mov     cx,6
+        mov     dx,22
+        call    input
+        mov     bh,0
+        mov     bl,inpcnt
+        mov     tab4,bx
+        cmp     capesc,"o"
+        jne     >b23
+        call    revok
+        jmp     ad99
+b23:    cmp     capesc,27
+        jne     >b31
+        call    revcan
+        jmp     ad99
+
+b31:    lea     di,datemes
+        lea     si,bufdat
+        mov     bp,tab5
+        mov     ax,220
+        mov     bx,40
+        mov     cx,6
+        mov     dx,10
+        call    input
+
+        mov     bh,0
+        mov     bl,inpcnt
+        mov     tab5,bx
+        cmp     capesc,"o"
+        jne     >b32
+        call    datecon
+        call    revok
+        jmp     ad99
+b32:    cmp     capesc,27
+        jne     >b3
+        call    datecon
+        call    revcan
+        jmp     ad99
+
+
+b3:     cmp     capesc,9
+        je      >b4
+        call    revok
+        jmp     ad99
+
+b4:     call    revok
+b6:     call    keyav
+        cmp     al,1ch          ; enter
+        je      ad99
+        cmp     al,0fh          ; tab
+        je      >b5
+        cmp     al,1            ; esc
+        jne     b6
+        call    revok
+        call    revcan
+        mov     capesc,27
+        jmp     ad99
+
+b5:     call    revok
+        call    revcan
+
+b8:     call    keyav
+        cmp     al,1ch
+        jne     >b7
+        mov     capesc,27
+        jmp     ad99
+b7:     cmp     al,0fh          ; tab
+        jne     b8
+        call    revcan
+        jmp     tmpent2
+ad99:   lea     di,botmes1
+        call    botline
+        ret
+
+
+revok:  mov     ax,463
+        mov     bx,63
+        mov     cx,537
+        mov     dx,78
+        call    revblk
+        ret
+
+revcan: mov     ax,463
+        mov     bx,93
+        mov     cx,537
+        mov     dx,108
+        call    revblk
+        ret
+
+
+;       ****************
+;       * CONVERT DATE *
+;       ****************
+
+datecon:
+        push    ax,cx,dx,si,di
+
+        mov     al,0
+        mov     bufdat+2,al
+        mov     bufdat+5,al
+        mov     bufdat+10,al
+
+        mov     cx,3
+        lea     dx,bufdat
+        call    decbin
+        mov     month,al
+
+        mov     cx,3
+        lea     dx,bufdat+3
+        call    decbin
+        mov     date,al
+
+        mov     cx,5
+        lea     dx,bufdat+6
+        call    decbin
+     
+        mov     year,ax
+        cmp     month,0
+        je      >d2
+        cmp     date,0
+        je      >d2
+        cmp     year,0
+        je      >d2
+        cmp     month,12
+        ja      >d2
+        cmp     date,31
+        ja      >d2
+
+        cmp     year,2000
+        jb      >d1
+        sub     year,100
+d1:     sub     year,1900
+
+d3:     pop     di,si,dx,cx,ax
+        ret
+
+d2:     call    getdate
+        jmp     d3
+
+
+;       *******************
+;       * TEMPLATE SCREEN *  DI = window message
+;       *******************
+
+tmpscr: mov     ax,50
+        mov     bx,20
+        mov     cx,590
+        mov     dx,180
+        call    window
+
+        lea     di,datemes
+        mov     si,0
+        mov     ax,220
+        mov     bx,40
+        mov     cx,6
+        mov     dx,10
+        call    input
+
+        lea     di,bufdat
+        call    prndat          ; print date
+        mov     al,0
+        stosb
+        lea     di,bufdat
+        mov     cx,282
+        mov     dx,40
+        call    wrtext
+
+        lea     di,inptyp
+        mov     cx,220
+        mov     dx,63
+        call    wrtext
+
+        call    prntyp
+        mov     di,si
+        mov     cx,300
+        mov     dx,63
+        call    wrtext          ; type
+
+
+        lea     di,inpamn
+        mov     si,0
+        mov     ax,104
+        mov     bx,90
+        mov     cx,9
+        mov     dx,9
+        call    input
+
+        lea     di,inpchk
+        mov     si,0
+        mov     ax,300
+        mov     bx,90
+        mov     cx,8
+        mov     dx,4
+        call    input
+
+        lea     di,inpname
+        mov     si,0
+        mov     ax,160
+        mov     bx,120
+        mov     cx,6
+        mov     dx,20
+        call    input
+
+        lea     di,inpnot
+        mov     si,0
+        mov     ax,160
+        mov     bx,150
+        mov     cx,6
+        mov     dx,22
+        call    input
+
+        lea     di,okmes
+        mov     cx,460
+        mov     dx,60
+        call    button
+        lea     di,canmes
+        mov     dx,90
+        call    button
+        ret
+
+
+;       ******************
+;       * NEW FILE INPUT *
+;       ******************
+
+newf:
+        lea     di,wintop13
+        call    getfn
+
+        cmp     inpcnt,0
+        je      new0
+        cmp     capesc,27
+        jne     new1
+new0:   jmp     new99
+
+new1:   call    clrfn           ; new filename
+        mov     bx,handle
+        call    close
+        call    edenv
+
+        lea     dx,fname1
+        call    create          ; open new file
+        call    close
+
+        mov     last,0
+        jmp     restr
+
+new99:  lea     di,wrksav
+        call    loadscr
+        ret
+
+
+;       *******************
+;       * OPEN FILE INPUT *
+;       *******************
+
+opninp:
+        lea     di,wintop12
+        call    getfn
+        cmp     inpcnt,0
+        je      opn0
+
+        cmp     capesc,27
+        jne     opn1
+opn0:   jmp     opn99
+
+opn1:   call    close
+        call    clrfn
+        lea     dx,fname1
+        call    openf           ; open new file
+        jnc     opn2
+
+        call    nfmess          ; not found
+        call    close           ; close new file
+        jmp     opn99
+                    
+opn2:   call    edenv
+
+opn99:  pop     ax              ; pop CALL
+        jmp     restr
+
+
+;       *************************
+;       * CLEAR & COPY FILENAME *
+;       *************************
+
+
+clrfn:  lea     di,inpbuf
+        mov     ch,0
+        mov     cl,inpcnt
+        add     di,cx
+        mov     al,0
+        stosb                   ; mark with 0 at the end
+
+        lea     di,fname1
+        mov     al,0
+        mov     cx,46
+f1:     stosb
+        loop    f1
+
+        lea     si,inpbuf
+        lea     di,fname1
+c2:     lodsb                   ; copy Fname
+        stosb
+        cmp     al,0
+        jne     c2
+        ret
+
+
+;       ****************
+;       * GET FILENAME *   DI= window top message
+;       ****************
+
+getfn:  mov     ax,80
+        mov     bx,40
+        mov     cx,560
+        mov     dx,150
+        call    window
+
+        call    setm
+        lea     di,scrmes4
+        mov     cx,250
+        mov     dx,110
+        call    wrtext
+
+        lea     di,inpfile
+        lea     si,inpbuf
+        mov     ax,100
+        mov     bx,80
+        mov     cx,9
+        mov     dx,33
+        mov     bp,0
+        call    input
+        ret
+  
+ 
+
+;       ***********************
+;       * INTRODUCTION SCREEN *
+;       ***********************
+
+intro:
+        mov     ax,1
+        mov     bx,22
+        mov     cx,638
+        mov     dx,22
+        call    drline
+
+        call    setm
+        lea     di,wintop3
+        mov     cx,0
+        mov     dx,11
+        call    wrtext
+
+        call    seplin
+        call    itmbar
+        cmp     last,1
+        ja      >m1
+        call    itmbar
+        jmp     >m4
+
+m1:     call    itmbar
+        mov     ax,last         ; goto last transaction
+        cmp     ax,12
+        ja      >m2
+        mov     ax,12
+
+m2:     sub     ax,11
+        mov     paginx,ax
+        mov     ax,last
+        mov     index,ax
+        cmp     ax,12
+        ja      >m3
+        mov     barnum,al
+        jmp     >m4
+m3:     mov     barnum,12
+m4:     call    itmbar
+        call    dispage
+        ret
+
+
+;       ********************
+;       * SEPARATION LINES *
+;       ********************
+
+seplin:
+        mov     ax,0
+        mov     bx,10
+        mov     cx,0
+        mov     dx,22
+        call    drline
+        mov     dx,21
+
+        add     ax,120
+        mov     cx,ax
+        mov     dx,188        ;21
+        call    drline
+                     
+        add     ax,150
+        mov     cx,ax
+        call    drline
+        add     ax,70
+        mov     cx,ax
+        call    drline
+        add     ax,138
+        mov     cx,ax
+        call    drline
+
+        mov     ax,639
+        mov     cx,ax
+        mov     dx,22
+        call    drline
+        ret
+           
+
+;       ********************
+;       * ITEM BAR DISPLAY *
+;       ********************
+
+itmbar:
+        mov     cx,13
+        mov     ax,0
+        mov     al,barnum
+        mul     cx
+        mov     bx,ax
+        add     bx,14
+        mov     dx,bx
+        mov     ax,0
+        mov     cx,639
+        add     dx,11
+        call    revblk
+        ret
+
+
+;       *****************
+;       * MENU SELECTOR *
+;       *****************
+
+openapp:
+        call    saveapp         ; save menu screen
+        lea     di,wrksav       ; save work screen
+        call    savescr
+        call    markap          ; Mark 1st MENU
+waitapp:
+        mov     ax,0ffffh
+        mov     sp,ax           ; reset stack
+
+        call    scode
+        cmp     al,1            ; ESC scancode?
+        je      closeapp
+        cmp     al,7ah          ; MENU?
+        je      waitapp         ; or closeapp
+        cmp     al,38h          ; ALT?
+        je      closeapp
+        call    selapp
+        jmp     waitapp
+
+closeapp:
+        lea     di,appsav
+        call    loadscr
+        mov     appnum,1
+        jmp     main
+
+
+;--------------------------------
+;         Select menu
+;--------------------------------
+
+selapp: cmp     al,4dh          ; right ?
+        jne     wtjm1
+        inc     appnum
+        mov     al,maxapn
+        cmp     appnum,al       ; MAXIMUM # of menus
+        jne     wtjm0
+        mov     appnum,1        ; RESET to 1
+wtjm0:  call    markap          ; MARK menu
+        ret
+
+wtjm1:  cmp     al,4bh          ; left ?
+        jne     enterap2
+        dec     appnum
+        cmp     appnum,0
+        jne     wtjm0
+        mov     al,maxapn
+        dec     al
+        mov     appnum,al       ; RESET to MAX
+        jmp     wtjm0
+
+
+;--------------------------------
+;          Enter Menu
+;--------------------------------
+
+enterap2:
+        pop     cx              ; POP CALL
+
+enterapp:
+        cmp     al,apkey1
+        jne     eap2
+        mov     appnum,1
+        call    markap
+        jmp     mabr1
+
+eap2:   cmp     al,apkey2
+        jne     eap3
+        mov     appnum,2
+        call    markap
+        jmp     mabr1
+
+eap3:   cmp     al,apkey3
+        jne     eap4
+        mov     appnum,3
+        call    markap
+        jmp     mabr1
+
+eap4:   cmp     al,apkey4
+        jne     eap5
+        mov     appnum,4
+        call    markap
+        jmp     dos             ; exit
+
+eap5:   cmp     al,apkey5
+        jne     eap6
+        mov     appnum,5
+        call    markap
+        jmp     mabr1
+
+eap6:   cmp     al,apkey6
+        jne     eap7
+        mov     appnum,6
+        call    markap
+        jmp     mabr1
+
+
+eap7:   cmp     al,1ch          ; enter ?
+        je      mabr1
+        cmp     al,50h          ; down ?
+        je      mabr1
+        cmp     al,255
+        je      eap1
+        call    beep
+eap1:   jmp     waitapp
+
+mabr1:  cmp     appnum,1
+        jne     mabr2
+        jmp     applic1
+mabr2:  cmp     appnum,2
+        jne     mabr3
+        jmp     applic2
+mabr3:  cmp     appnum,3
+        jne     mabr4
+        jmp     applic3
+mabr4:  cmp     appnum,4
+        jne     mabr5
+        cmp     al,1ch      ; Enter for QUIT
+        jne     >m1
+        jmp     dos
+m1:     jmp     applic4
+
+mabr5:  cmp     appnum,5
+        jne     mabr6
+        jmp     applic5
+mabr6:  jmp     applic6
+
+;--------------------------------
+;     Abort / Option select
+;--------------------------------
+
+aopsel:
+        call    getkey
+        cmp     al,1            ; ESC?
+        jne     opt1j1
+        lea     di,scrsav
+        call    loadscr
+        pop     cx              ; pop CALL
+        jmp     waitapp
+chgap1: pop     cx              ; pop CALL
+        jmp     changeap        ; change application
+
+opt1j1: cmp     al,4bh          ; left?
+        je      chgap1
+        cmp     al,4dh          ; right?
+        je      chgap1
+        ret
+
+
+;--------------------------------
+;        Change Menu
+;--------------------------------
+
+
+changeap:
+        lea     di,scrsav
+        call    loadscr
+        call    selapp
+        mov     al,50h
+c1:     jmp     enterapp
+
+
+;       *******************
+;       * OPTION SELECTOR *
+;       *******************
+
+selopt: cmp     al,50h          ; down?
+        jne     optj2
+        call    optmark
+        inc     optnum
+        jmp     optj4
+optj2:  cmp     al,48h          ; up ?
+        je      optj0
+        cmp     al,1ch          ; enter ?
+        jne     optj
+        pop     ax              ; pop CALL
+        jmp     execute         ; execute
+optj:   ret
+
+optj0:  call    optmark
+        dec     optnum
+
+optj4:  mov     al,optnum
+        cmp     appnum,1
+        jne     optj5
+        cmp     aplno1,0
+        je      optj5
+        cmp     al,0
+        jne     optj4b
+        mov     al,aplno1
+        mov     optnum,al
+        jmp     optj3
+optj4b: dec     al
+        cmp     al,aplno1
+        jne     optj5
+        mov     optnum,1
+
+optj5:  cmp     appnum,2
+        jne     optj6
+        cmp     aplno2,0
+        je      optj6
+        cmp     al,0
+        jne     optj4c
+        mov     al,aplno2
+        mov     optnum,al
+        jmp     optj3
+optj4c: dec     al
+        cmp     al,aplno2
+        jne     optj6
+        mov     optnum,1
+
+optj6:  cmp     appnum,3
+        jne     optj7
+        cmp     aplno3,0
+        je      optj7
+        cmp     al,0
+        jne     optj4d
+        mov     al,aplno3
+        mov     optnum,al
+        jmp     optj3
+optj4d: dec     al
+        cmp     al,aplno3
+        jne     optj7
+        mov     optnum,1
+
+optj7:  cmp     appnum,4
+        jne     optj8
+        cmp     aplno4,0
+        je      optj8
+        cmp     al,0
+        jne     optj4e
+        mov     al,aplno4
+        mov     optnum,al
+        jmp     optj3
+optj4e: dec     al
+        cmp     al,aplno4
+        jne     optj8
+        mov     optnum,1
+
+optj8:  cmp     appnum,5
+        jne     optj9
+        cmp     aplno5,0
+        je      optj9
+        cmp     al,0
+        jne     optj4f
+        mov     al,aplno5
+        mov     optnum,al
+        jmp     optj3
+optj4f: dec     al
+        cmp     al,aplno5
+        jne     optj9
+        mov     optnum,1
+
+optj9:  cmp     appnum,6
+        jne     optj3
+        cmp     aplno6,0
+        je      optj3
+        cmp     al,0
+        jne     optj4g
+        mov     al,aplno6
+        mov     optnum,al
+        jmp     optj3
+optj4g: dec     al
+        cmp     al,aplno6
+        jne     optj3
+        mov     optnum,1
+
+optj3:  call    optmark
+        ret
+
+
+;       *************
+;       * MARK MENU *
+;       *************
+
+markap: cmp     appnum,1
+        jne     selap2
+        lea     di,appmes
+        call    applic          ; clear MENU line
+
+        mov     ax,apltm1
+        inc     ax
+        mov     bx,10
+        mov     cx,aplbm1
+        mov     dx,27
+        call    revblk          ; Reverse default application
+        ret
+
+selap2: cmp     appnum,2
+        jne     selap3
+        lea     di,appmes
+        call    applic
+        mov     ax,apltm2
+        mov     bx,10
+        mov     cx,aplbm2
+        mov     dx,27
+        call    revblk
+        ret
+
+selap3: cmp     appnum,3
+        jne     selap4
+        lea     di,appmes
+        call    applic
+        mov     ax,apltm3
+        mov     bx,10
+        mov     cx,aplbm3
+        mov     dx,27
+        call    revblk
+        ret
+
+selap4: cmp     appnum,4
+        jne     selap5
+        lea     di,appmes
+        call    applic
+        mov     ax,apltm4
+        mov     bx,10
+        mov     cx,aplbm4
+        mov     dx,27
+        call    revblk
+
+selap5: cmp     appnum,5
+        jne     selap6
+        lea     di,appmes
+        call    applic
+        mov     ax,apltm5
+        mov     bx,10
+        mov     cx,aplbm5
+        mov     dx,27
+        call    revblk
+
+selap6: cmp     appnum,6
+        jne     selap7
+        lea     di,appmes
+        call    applic
+        mov     ax,apltm6
+        mov     bx,10
+        mov     cx,aplbm6
+        mov     dx,27
+        call    revblk
+
+selap7: ret
+
+
+;       **********
+;       * MENU 1 *
+;       **********
+
+applic1:
+        mov     optnum,1        ; reset option to 1
+        lea     di,scrsav
+        mov     cx,aplwx1
+        mov     dx,aplwy1
+        call    savewin
+        mov     di,0
+        mov     ax,apltm1
+        mov     bx,28
+        mov     cx,aplwx1
+        mov     dx,aplwy1
+        call    window          ; Create Options window
+        lea     di,optmes1
+        call    putext          ; Write options in window
+        call    optmark         ; Mark option
+
+        mov     ax,1
+        mov     bx,92
+        mov     cx,240
+        mov     dx,92
+        call    drline          ; Option separator lines
+        mov     bx,60
+        mov     dx,60
+        call    drline
+
+optlp:  call    aopsel
+        call    selopt
+        jmp     optlp
+
+
+;       **********
+;       * MENU 2 *
+;       **********
+
+applic2:
+        mov     optnum,1
+        lea     di,scrsav
+        mov     cx,aplwx2
+        mov     dx,aplwy2
+        call    savewin
+        mov     di,0
+        mov     ax,apltm2
+        mov     bx,28
+        mov     cx,aplwx2
+        mov     dx,aplwy2
+        call    window          ; Create Options window
+
+        lea     di,optmes2
+        call    putext          ; Write options in window
+        call    optmark
+
+        mov     ax,95
+        mov     bx,76
+        mov     cx,350
+        mov     dx,76
+        call    drline          ; Option separator lines
+
+
+optlp2: call    aopsel
+        call    selopt
+        jmp     optlp2
+
+
+;       **********
+;       * MENU 3 *
+;       **********
+
+applic3:
+        mov     optnum,1
+        lea     di,scrsav
+        mov     cx,aplwx3
+        mov     dx,aplwy3
+        call    savewin
+        mov     di,0
+        mov     ax,apltm3
+        mov     bx,28
+        mov     cx,aplwx3
+        mov     dx,aplwy3
+        call    window          ; Create Options window
+        lea     di,optmes3
+        call    putext          ; Write options in window
+        call    optmark
+
+optlp3: call    aopsel
+        call    selopt
+        jmp     optlp3
+
+
+;       **********
+;       * MENU 4 *
+;       **********
+
+applic4:
+        mov     optnum,1
+        lea     di,scrsav
+        mov     cx,aplwx4
+        mov     dx,aplwy4
+        call    savewin
+
+opt4j:
+        call    aopsel
+        call    selopt
+        jmp     opt4j
+
+
+;       **********
+;       * MENU 5 *
+;       **********
+
+applic5:
+        mov     optnum,1
+        lea     di,scrsav
+        mov     cx,aplwx5
+        mov     dx,aplwy5
+        call    savewin
+        mov     di,0
+        mov     ax,apltm5
+        mov     bx,28
+        mov     cx,aplwx5
+        mov     dx,aplwy5
+        call    window          ; Create Options window
+        lea     di,optmes5
+        call    putext          ; Write options in window
+        call    optmark
+
+optlp5: call    aopsel
+        call    selopt
+        jmp     optlp5
+
+
+;       **********
+;       * MENU 6 *
+;       **********
+
+applic6:
+        mov     optnum,1
+        lea     di,scrsav
+        mov     cx,aplwx6
+        mov     dx,aplwy6
+        call    savewin
+        mov     di,0
+        mov     ax,apltm6
+        mov     bx,28
+        mov     cx,aplwx6
+        mov     dx,aplwy6
+        call    window          ; Create Options window
+        lea     di,optmes6
+        call    putext          ; Write options in window
+        call    optmark
+
+optlp6: call    aopsel
+        call    selopt
+        jmp     optlp6
+                      
+
+;       *****************
+;       * OPTION MARKER *
+;       *****************
+
+optmark:
+        push    ax,bx,cx,dx
+        cmp     appnum,1
+        jne     omj1
+        cmp     aplno1,0
+        je      omj1
+        mov     al,optnum       ; option number
+        dec     al
+        mov     ah,0
+        mov     cx,16
+        mul     cx
+        add     ax,29
+        mov     bx,ax
+        mov     ax,apltm1
+        inc     ax
+        mov     cx,aplwx1
+        dec     cx
+        mov     dx,bx
+        add     dx,15
+        call    revblk
+        pop     dx,cx,bx,ax
+        ret
+
+
+omj1:   cmp     appnum,2
+        jne     omj2
+        cmp     aplno2,0
+        je      omj2
+        mov     al,optnum
+        dec     al
+        mov     ah,0
+        mov     cx,16
+        mul     cx
+        add     ax,29
+        mov     bx,ax
+        mov     ax,apltm2
+        inc     ax
+        mov     cx,aplwx2
+        dec     cx
+        mov     dx,bx
+        add     dx,15
+        call    revblk
+        pop     dx,cx,bx,ax
+        ret
+
+omj2:   cmp     appnum,3
+        jne     omj3
+        cmp     aplno3,0
+        je      omj3
+        mov     al,optnum
+        dec     al
+        mov     ah,0
+        mov     cx,16
+        mul     cx
+        add     ax,29
+        mov     bx,ax
+        mov     ax,apltm3
+        inc     ax
+        mov     cx,aplwx3
+        dec     cx
+        mov     dx,bx
+        add     dx,15
+        call    revblk
+        pop     dx,cx,bx,ax
+        ret
+
+omj3:   cmp     appnum,4
+        jne     omj4
+        cmp     aplno4,0
+        je      omj4
+        mov     al,optnum
+        dec     al
+        mov     ah,0
+        mov     cx,16
+        mul     cx
+        add     ax,29
+        mov     bx,ax
+        mov     ax,apltm4
+        inc     ax
+        mov     cx,aplwx4
+        dec     cx
+        mov     dx,bx
+        add     dx,15
+        call    revblk
+        pop     dx,cx,bx,ax
+        ret
+
+omj4:   cmp     appnum,5
+        jne     omj5
+        cmp     aplno5,0
+        je      omj5
+        mov     al,optnum
+        dec     al
+        mov     ah,0
+        mov     cx,16
+        mul     cx
+        add     ax,29
+        mov     bx,ax
+        mov     ax,apltm5
+        inc     ax
+        mov     cx,aplwx5
+        dec     cx
+        mov     dx,bx
+        add     dx,15
+        call    revblk
+        pop     dx,cx,bx,ax
+        ret
+
+omj5:   cmp     appnum,6
+        jne     omj6
+        cmp     aplno6,0
+        je      omj6
+        mov     al,optnum
+        dec     al
+        mov     ah,0
+        mov     cx,16
+        mul     cx
+        add     ax,29
+        mov     bx,ax
+        mov     ax,apltm6
+        inc     ax
+        mov     cx,aplwx6
+        dec     cx
+        mov     dx,bx
+        add     dx,15
+        call    revblk
+omj6:   pop     dx,cx,bx,ax
+        ret
+                         
+
+;       *****************
+;       * DOS UTILITIES *
+;       *****************
+
+dos:    call    close
+        mov     ax,3
+        int     5fh             ; back to CGA mode
+        call    edenv           ; edit .ENV file
+        mov     ah,61h
+        mov     al,60h
+        int     15h             ; announc. right
+        int     20h             ; DOS
+cbreak:
+        iret
+
+beep:   push    ax,cx,dx
+        mov     ah,2
+        mov     dl,7
+        int     21h
+        pop     dx,cx,ax
+        ret
+
+
+dismes: push    ax              ; DX >text
+        mov     ah,9
+        int     21h
+        pop     ax
+        ret
+
+
+getdate:
+        mov     ah,2ah
+        int     21h
+        mov     year,cx
+        mov     month,dh
+        mov     date,dl
+        cmp     year,2000
+        jb      >g1
+        sub     year,100
+g1:     sub     year,1900
+        ret
+
+
+;       *********************
+;       * GETKEY / SCANCODE *  AL=255 : no character
+;       *********************
+
+getkey:
+        mov     ah,0bh
+        int     21h
+        cmp     al,255
+        je      keyav
+        mov     al,255
+        mov     ah,al
+        ret
+
+keyav:
+        mov     ah,0
+        int     16h
+        mov     ascii,al
+        mov     al,ah           ;AL=scancode
+        call    clrkbuf
+        ret
+
+inchar: mov     ah,0            ;AL=character
+        int     16h
+        ret
+
+clrkbuf:                        ; clear keyboard buffer
+        push    ax
+        mov     ah,0ch
+        mov     al,0
+        int     21h
+        pop     ax
+        ret
+
+
+;       ******************
+;       * READ SCAN CODE *
+;       ******************
+
+
+scode:  call    getscan
+        mov     ah,al
+        cmp     al,38h
+        je      scwait
+        cmp     al,7ah
+        je      scwait
+        jmp     getkey
+
+scwait: call    getscan
+        cmp     ah,al
+        je      scwait
+        mov     al,ah
+        call    clrkbuf
+        ret
+
+getscan:
+        push    ax
+        mov     ah,2
+        int     16h
+        pop     ax
+        push    dx
+        mov     dx,60h
+        in      al,dx
+        pop     dx
+        ret
+
+
+;       ***************** pos: AX,BX  #of char: CX(text) DX(win)
+;       * INPUT ROUTINE * text: DI     buffer: SI
+;       ***************** if SI=0 only display, no input
+;                         if DI=0 only input at CX,DX (no window)
+;                         BP= cursor position # 1-n
+
+input:
+        push    ax,bx,cx,dx,bp
+        mov     inplen,dl
+        mov     decflg,0
+
+        call    setm
+        cmp     di,0
+        je      rawinp
+
+        push    ax,dx
+        mov     ah,0
+        mov     al,10
+        mul     cx              ; calculate # of text characters
+        mov     cx,ax
+        mov     al,8
+        call    setrule
+        pop     dx,ax
+
+        push    ax,cx
+        mov     ah,0
+        mov     al,10
+        inc     dx
+        mov     cx,dx
+        mul     cx              ; calculate window lenght
+        mov     dx,ax
+        inc     dx
+        pop     cx,ax
+
+        push    cx,dx
+        mov     cx,ax
+        mov     dx,bx
+        call    wrtext
+        pop     dx,cx
+
+        push    dx
+        add     cx,ax
+        mov     dx,bx
+        sub     dx,2
+        call    setpos
+        add     cx,2
+        add     dx,2
+        mov     cursorx,cx
+        mov     cursory,dx
+        pop     dx
+        
+        add     cx,dx
+        mov     dx,bx
+        add     dx,12
+        mov     al,0
+        call    rectan
+
+        cmp     bp,0            ; cursor position in window
+        je      rawinp
+        mov     ax,bp
+        mov     cx,10
+        mul     cx
+        add     cursorx,ax
+        mov     cx,cursorx
+        mov     dx,cursory
+
+rawinp: call    setpos          ; position cursor
+
+        cmp     si,0
+        jne     inlp0b          ; if SI=0 no input
+        jmp     inlp8
+inlp0b: mov     al,0            ; cursor ON
+        call    echo
+
+inlp0:  mov     cx,bp
+        mov     inpcnt,cl
+        mov     di,si
+        add     di,bp
+
+inlp1:  call    inchar          ; get character
+        cmp     ah,43h          ; F9
+        jne     >i1
+        mov     al,27
+        jmp     inlp2c          ; Abort
+
+i1:     cmp     ah,44h          ; F10
+        jne     >i2
+        mov     al,"o"
+        jmp     inlp2c          ; O.K.
+
+i2:     cmp     numflg,1        ; numeric input ?
+        jne     inlp1b
+        cmp     al,13           ; ENTER
+        je      inlp1b
+        cmp     al,8            ; BACK SPACE
+        jne     >i4
+        mov     decflg,0
+        jmp     inlp1b
+
+i4:     cmp     al,"."
+        jne     >i3
+        cmp     decflg,1
+        je      inlp1c
+        mov     decflg,1
+        jmp     inlp1b
+
+i3:     cmp     al,27           ; ESC
+        je      inlp1b
+        cmp     al,9            ; TAB
+        je      inlp1b
+
+        cmp     al,48
+        jb      inlp1c
+        cmp     al,57
+        ja      inlp1c
+        jmp     inlp1b
+inlp1c: call    beep
+        jmp     inlp1
+
+inlp1b: cmp     al,13           ; return?
+        je      inlp5
+        cmp     al,8            ; backspace?
+        jne     inlp2
+        dec     inpcnt
+        dec     di
+        mov     byte ptr[di],32 ; erase in memory
+        mov     cl,inpcnt
+        cmp     cl,0
+        jge     inlp3b
+        call    beep
+        mov     bp,0
+        jmp     inlp0
+
+inlp2:  cmp     al,27           ; ESC
+        jne     inlp2b
+inlp2c: mov     capesc,al       ; save ESC/TAB capture
+        sub     cursorx,10
+        mov     al,255
+        call    echo            ; Cursor off
+        mov     al,0
+        jmp     inlp7
+
+inlp2b: cmp     al,9            ; TAB
+        je      inlp2c
+        cmp     al,32
+        jb      inlp6
+        inc     inpcnt
+        mov     cl,inpcnt
+        cmp     cl,inplen
+        ja      inlp4
+inlp3:  stosb                   ; put in memory
+inlp3b: call    echo
+        jmp     inlp1
+
+inlp4:  mov     cl,inplen
+        mov     inpcnt,cl
+inlp6:  call    beep
+        jmp     inlp1
+
+inlp5:  mov     al,13
+        mov     capesc,al       ; CR capture
+        sub     cursorx,10
+        mov     al,255
+        call    echo            ; cursor OFF
+                                ; INPCNT = lenght of string
+inlp7:  mov     al,0
+        stosb
+inlp8:  mov     al,0
+        call    setrule
+        pop     bp,dx,cx,bx,ax
+        ret
+
+
+;       ****************
+;       * ECHO ROUTINE *  0=cursor ON   255=cursor OFF
+;       ****************
+
+echo:   push    ax,cx,dx,di     ;CursorX,CursorY=position
+        lea     di,echar        ;AL=character
+        mov     cx,cursorx
+        mov     dx,cursory
+        cmp     al,8            ; backspc
+        jne     ech1
+
+bckspc: mov     al,32
+        mov     [di],al
+        call    wrtext
+        sub     cursorx,10
+        mov     cx,cursorx
+        jmp     ech2
+
+ech1:   cmp     al,0
+        je      ech2
+ech1b:  cmp     al,255          ; cursor OFF ?
+        jne     ech1c
+        add     cx,10
+        mov     al,32
+        jmp     ech2b
+
+ech1c:  mov     [di],al
+        call    wrtext
+        add     cursorx,10
+        add     cx,10
+ech2:   mov     al,219
+ech2b:  mov     [di],al
+        call    wrtext
+        pop     di,dx,cx,ax
+        ret
+
+
+;       ***************
+;       * MENU WINDOW *
+;       ***************
+
+applic: push    ax,bx,cx,dx,di
+        mov     ax,0
+        mov     bx,9
+        mov     cx,635
+        mov     dx,28
+        mov     di,0
+        call    window
+
+        call    setm
+        mov     cx,5
+        mov     dx,14
+        lea     di,appmes
+        call    wrtext
+
+        mov     bx,25
+        mov     ax,ahpos1
+        call    uline           ; Underline Letters
+        mov     ax,ahpos2
+        call    uline
+        mov     ax,ahpos3
+        call    uline
+        mov     ax,ahpos4
+        call    uline
+        mov     ax,ahpos5
+        call    uline
+
+        pop     di,dx,cx,bx,ax
+        ret
+
+
+;       *******************
+;       * WINDOW CREATION *  from (AX,BX) to (CX,DX) message >DI
+;       *******************
+
+window: push    ax,bx,cx,dx
+        push    cx,dx
+
+        push    ax,di
+        lea     di,fmask1
+        call    setmask
+        mov     al,0
+        call    setrule
+        pop     di,ax
+
+        mov     dx,bx
+        inc     cx
+        add     dx,4
+        call    setpos
+        pop     dx,cx
+        push    cx,dx
+        add     cx,6
+        add     dx,4
+        push    ax
+        mov     al,2
+        call    rectan          ; right shadow
+        pop     ax
+        pop     dx,cx
+
+        push    cx,dx
+        mov     cx,ax
+        add     cx,5
+        inc     dx
+        call    setpos
+        pop     dx,cx
+        push    cx,dx
+        add     cx,6
+        add     dx,4
+        push    ax
+        mov     al,2
+        call    rectan          ; bottom shadow
+        pop     ax
+        pop     dx,cx
+
+        push    cx,dx
+        push    ax
+        mov     al,0
+        call    setcol
+        call    setrule
+        pop     ax
+        mov     cx,ax
+        mov     dx,bx
+        call    setpos
+        pop     dx,cx
+
+        push    ax,cx,dx
+        mov     al,1
+        call    rectan
+        pop     dx,cx,ax
+
+        push    cx,dx
+        push    ax
+        mov     al,1
+        call    setcol
+        pop     ax
+        mov     cx,ax
+        mov     dx,bx
+        call    setpos
+        pop     dx,cx
+        push    ax
+        mov     al,0
+        call    rectan
+        pop     ax
+
+        cmp     di,0
+        je      notitle
+
+title:
+        push    cx,dx
+        mov     cx,ax
+        mov     dx,bx
+        add     dx,2
+        call    sets
+        push    ax
+        mov     al,0
+        call    wrtext
+        pop     ax
+        pop     dx,cx
+
+        inc     ax
+        inc     bx
+        dec     cx
+        mov     dx,bx
+        add     dx,10
+        call    revblk
+
+notitle:
+        call    setm
+        pop     dx,cx,bx,ax
+        ret
+
+
+;       **********************
+;       * PUT TEXT IN WINDOW * to: AX,BX  text=DI
+;       **********************
+
+putext: push    ax,cx,dx,si,di
+        call    setm
+        mov     cx,ax
+        mov     dx,bx
+        add     cx,20
+        add     dx,3
+        call    wrtext
+
+ptlp2:  mov     si,di
+ptlp1:  lodsb
+        cmp     al,255          ; EOT?
+        je      eot1
+        cmp     al,0
+        jne     ptlp1
+        mov     di,si
+        add     dx,16
+        call    wrtext
+        jmp     ptlp2
+
+eot1:   pop     di,si,dx,cx,ax
+        ret
+
+
+;       ******************
+;       * SHADOW LETTERS *  to: AX,BX DI=message CX=# of characters
+;       ******************  if DI=0 then Shadow current text
+
+shadtxt:
+        push    ax,bx,cx,dx
+
+        push    ax,di
+        lea     di,fmask1
+        call    setmask
+
+        mov     al,10
+        mov     ah,0
+        mul     cx
+        mov     cx,ax
+        pop     di,ax
+        add     cx,ax
+        call    setm
+
+        cmp     di,0
+        je      nsh1
+        push    ax,cx
+        mov     cx,ax
+        mov     dx,bx
+        call    wrtext
+        pop     cx,ax
+
+nsh1:   mov     dx,bx
+        add     dx,11
+        call    revblk
+
+        push    cx,dx
+        mov     cx,ax
+        mov     dx,bx
+        call    setpos
+        pop     dx,cx
+
+        push    ax
+        mov     al,2
+        call    rectan
+        pop     ax
+        call    revblk
+        pop     dx,cx,bx,ax
+        ret
+
+
+;       *****************
+;       * REVERSE BLOCK * from (ax,bx) to (cx,dx)
+;       *****************
+
+revblk: push    ax,bx,cx,dx
+        push    ax
+        mov     al,3            ; XOR
+        call    setrule
+        pop     ax
+
+        push    cx,dx
+        mov     cx,ax
+        mov     dx,bx
+        call    setpos
+        pop     dx,cx
+
+        mov     al,1
+        call    rectan
+        mov     al,8
+        call    setrule
+        pop     dx,cx,bx,ax
+        ret
+
+
+;       **********************
+;       * TOP LINE FORMATION *
+;       **********************
+
+topline:
+        push    ax,cx,dx,di
+        mov     al,8
+        call    setrule
+        mov     al,1
+        call    setcol
+        call    sets
+
+        mov     cx,0
+        mov     dx,1
+        call    wrtext
+
+        lea     di,fname1
+        mov     cx,410
+        mov     dx,1
+        call    wrtext
+
+        mov     ax,0
+        mov     bx,0
+        mov     cx,639
+        mov     dx,8    ;!*
+        call    revblk
+
+        mov     al,0
+        call    setrule
+
+        mov     cx,0
+        mov     dx,0
+        call    setpos
+        mov     cx,639
+        mov     dx,9
+        mov     al,0
+        call    rectan
+
+        pop     di,dx,cx,ax
+        ret
+
+
+;       *************************
+;       * BOTTOM LINE FORMATION *
+;       *************************
+
+botline:
+        push    ax,cx,dx,di
+        call    sets
+
+        mov     al,1
+        call    setcol
+        mov     al,0
+        call    setrule
+
+        mov     cx,31
+        mov     dx,190
+        call    setpos
+        add     cx,57
+        mov     dx,199
+        mov     al,1
+        call    rectan
+
+        call    keyrec
+        call    keyrec
+        call    keyrec
+
+        add     cx,7
+        call    keyrec
+        call    keyrec
+        call    keyrec
+        call    keyrec
+
+        add     cx,7
+        call    keyrec
+        call    keyrec
+
+        mov     al,3
+        call    setrule
+        mov     cx,39
+        mov     dx,191
+        call    wrtext
+        pop     di,dx,cx,ax
+        ret
+
+
+keyrec: add     cx,3
+        mov     dx,190
+        call    setpos
+        add     cx,57
+        mov     dx,199
+        call    rectan
+        ret
+
+;       ******************
+;       * DISPLAY BUTTON *    to: CX,DX
+;       ******************    DI: message
+
+button: push    ax,cx,dx
+        call    setpos
+        push    ax,cx,dx
+        mov     al,0
+        call    setrule
+        mov     al,1
+        call    setcol
+        add     cx,80
+        add     dx,21
+        mov     al,1            ;black fill
+        call    rectan
+        pop     dx,cx,ax
+
+        push    ax,cx,dx
+        add     cx,3
+        add     dx,3
+        call    setpos
+        mov     al,0
+        call    setcol          ; white fill
+        add     cx,74
+        add     dx,15
+        mov     al,1
+        call    rectan
+        call    setcol
+        pop     dx,cx,ax
+        add     cx,10
+        add     dx,6
+        call    wrtext
+        pop     dx,cx,ax
+        ret
+
+
+;       ****************
+;       * ABOUT WINDOW *
+;       ****************
+
+about:  push    ax,bx,cx,dx,di
+        lea     di,wrksav       ; save work screen
+        call    savescr
+        lea     di,wintop1
+        mov     ax,160
+        mov     bx,50
+        mov     cx,460
+        mov     dx,140
+        call    window
+
+        lea     di,aboutms      ; ABOUT message
+        mov     ax,165
+        mov     bx,70
+        call    putext
+
+        lea     di,botmes2
+        call    botline         ; new bottom key labels
+        call    keyav
+        lea     di,botmes1
+        call    botline
+
+        pop     di,dx,cx,bx,ax
+        ret
+
+
+;       ***************
+;       * HELP WINDOW *
+;       ***************
+
+help:   push    ax,bx,cx,dx,di
+        lea     di,wrksav       ; save work screen
+        call    savescr
+        lea     di,wintop2
+        mov     ax,40
+        mov     bx,10
+        mov     cx,600
+        mov     dx,185
+        call    window
+
+        lea     di,helpms      ; HELP message
+        mov     ax,60
+        mov     bx,23
+        call    putext
+
+        lea     di,botmes2
+        call    botline
+
+        call    keyav
+
+        lea     di,botmes1
+        call    botline
+        pop     di,dx,cx,bx,ax
+        ret
+
+
+
+;       *********************
+;       * SET GRAPHICS MODE *
+;       *********************
+
+setgra: mov     ax,6            ;set 640x200 graphics
+        int     5fh
+        ret
+
+setcga: mov     ax,3
+        int     5fh
+        ret
+
+
+;       **********************
+;       * SET CHARACTER FONT *
+;       **********************
+
+setl:   push    ax,cx,dx,di,es
+        mov     cx,100ch        ;LARGE 16x12 font
+        jmp     setfon
+
+setm:   push    ax,cx,dx,di,es
+        mov     cx,0a0b         ;MEDIUM 10x11 font
+        jmp     setfon
+
+sets:   push    ax,cx,dx,di,es
+        mov     cx,0808h        ;SMALL 8x8 font
+
+setfon: mov     ah,10h
+        int     5fh
+        mov     es,dx
+        mov     di,ax
+        mov     ah,11h
+        int     5fh
+        pop     es,di,dx,cx,ax
+        ret
+
+
+;       ********************
+;       * SET PEN POSITION *  CX=H  DX=V
+;       ********************
+
+setpos: push    ax
+        mov     ah,8
+        int     5fh
+        pop     ax
+        ret
+
+
+;       *****************
+;       * SET PEN COLOR * AL=1 for black, 0 for white
+;       *****************
+
+setcol: push    ax
+        mov     ah,9
+        int     5fh
+        pop     ax
+        ret
+           
+
+;       *****************
+;       * SET LINE TYPE *  CX= line type 16-bit value
+;       *****************
+
+setype: push    ax
+        mov     ah,0bh
+        int     5fh
+        pop     ax
+        ret
+
+
+;       *****************
+;       * SET FILL MASK *   DI=points to 8-byte fill mask
+;       *****************
+
+setmask:
+        push    ax,es
+        push    cs
+        pop     es
+        mov     ah,1
+        int     5fh          ; set fillmask (FMASK1)
+        pop     es,ax
+        ret
+
+
+;       ************************
+;       * SET REPLACEMENT RULE *  AL= 0-3,8 rule
+;       ************************
+
+setrule:
+        push    ax              ; AL=0 : force (pen color)
+        mov     ah,0ah          ; AL=1 : AND with screen
+        int     5fh             ; AL=2 : OR with screen
+        pop     ax              ; AL=3 : XOR with screen
+        ret                     ; AL=8 : force text + graphics
+
+
+;       ***********************
+;       * WRITE TEXT on (H,V) *  CX=H  DX=V DI="text",0
+;       ***********************
+
+wrtext: push    ax,es
+        mov     ah,15
+        mov     al,0            ; rotation flag (0/90deg)
+        push    cs
+        pop     es
+        int     5fh
+        pop     es,ax
+        ret
+
+
+;       *************
+;       * DRAW LINE * from AX,BX to: CX,DX (H,V)
+;       *************
+
+drline:
+        push    cx,dx
+        mov     cx,ax
+        mov     dx,bx
+        call    setpos
+        pop     dx,cx
+
+        push    ax
+        mov     ah,6
+        int     5fh
+        pop     ax
+        ret
+
+
+;       ********************
+;       * UNDERLINE LETTER *  to: AX,BX
+;       ********************
+
+
+uline:  push    ax,bx
+        mov     dx,bx
+        mov     cx,ax
+        add     cx,10
+        call    drline
+        pop     bx,ax
+        ret
+
+
+;       ******************************
+;       * DRAW RECTANGLE (OLD)-(H,V) * OLD H,V to CX,DX fill=AL
+;       ******************************
+
+rectan: push    ax
+        mov     ah,5         ; AL=0  outline
+        int     5fh          ; AL=1  solid fill
+        pop     ax           ; AL=2  pattern fill
+        ret
+
+
+;       ****************
+;       * SCROLL BLOCK *
+;       ****************
+
+scroll: push    ax,es           ; AL   : scroll direction
+        mov     ah,12h          ; CX,DX: to (H,V) position
+        push    cs              ; SI   : fill color
+        pop     es              ; DI   ; pixel scroll distance
+        int     5fh
+        pop     es,ax
+        ret
+
+
+;       ********************
+;       * SAVE IMAGE BLOCK *   DI : image buffer
+;       ********************
+
+saveblk:                     ; save BLOCK
+        push    si,bp
+        mov     si,cx
+        mov     bp,dx
+        mov     cx,ax
+        mov     dx,bx
+        add     si,6         ; save shadow img
+        add     bp,4
+        push    ax,es        ; AX,BX (H,V) : corner 1
+        mov     ah,0dh       ; CX,DX (H,V) : corner 2
+        push    cs           ;
+        pop     es
+        int     5fh
+        pop     es,ax,bp,si
+        ret
+
+savewin:                          ; save WINDOW  CX,DX= bottom limit
+        push    ax,cx,dx,si,bp    ; DI = buffer
+        mov     ax,0
+        mov     bx,9
+        call    saveblk
+        pop     bp,si,dx,cx,ax
+        ret
+
+savescr:                          ; DI = buffer
+        push    ax,cx,dx,si,bp
+        mov     ax,0
+        mov     bx,9
+        mov     cx,633
+        mov     dx,185
+        call    saveblk
+        pop     bp,si,dx,cx,ax
+        ret
+
+saveapp:
+        push    ax,cx,dx,si,bp
+        lea     di,appsav
+        mov     ax,0
+        mov     bx,9
+        mov     cx,633
+        mov     dx,35
+        call    saveblk
+        pop     bp,si,dx,cx,ax
+        ret
+
+
+;       ********************
+;       * LOAD IMAGE BLOCK *   DI : image buffer
+;       ********************
+
+loadblk:                     ; CX,DX: (H,V) position
+        push    ax,es        ; AL=0 : force (pen color)
+        mov     ah,0eh       ; AL=1 : AND with screen
+        push    cs           ; AL=2 : OR with screen
+        pop     es           ; AL=3 : XOR with screen
+        int     5fh          ; AL=4 : invert + force (pen color)
+        pop     es,ax        ; AL=5 : invert + AND with screen
+        ret                  ; AL=6 : invert + OR with screen
+                             ; AL=7 : invert + XOR with screen
+
+loadscr:
+        push    ax,cx,dx     ; DI = buffer
+        mov     cx,0
+        mov     dx,9
+        mov     al,0         ; force rule
+        call    loadblk
+        pop     dx,cx,ax
+        ret
+
+
+;       ********************
+;       * UCASE CONVERSION *    locase > AL Ucase output > AL
+;       ********************
+
+ucase:  cmp     al,61h
+        jb      udone
+        cmp     al,7ah
+        ja      udone
+        and     al,5fh                  ; clear 5th bit
+udone:  ret
+
+
+;       *************** handle < AX
+;       * CREATE FILE * offset > DX
+;       *************** carry=1=error
+
+create:
+        mov     cx,0     ;normal file
+        mov     ah,3ch
+        int     21h
+        mov     handle,ax
+        ret
+
+
+;       ************* offset >DX
+;       * OPEN FILE * AL:0>R,1>W,2>RW
+;       ************* carry=1=error
+
+openf:  mov     ah,3dh
+        mov     al,02h                  ;R/W
+        int     21h
+        mov     handle,ax
+        ret
+
+
+;       ************** handle # > BX
+;       * READ  FILE * #bytes   > CX
+;       ************** buffer   > DX
+
+readf:  mov     eof,0           ; clear EOF flag
+        mov     ah,3fh
+        mov     bx,handle
+        int     21h
+        cmp     ax,cx
+        je      readok
+        inc     eof
+readok: ret
+
+
+;       *********************
+;       * NOT FOUND MESSAGE *
+;       *********************
+
+nfmess:
+        lea     di,errmes6
+        mov     ax,200
+        mov     bx,95
+        mov     cx,440
+        mov     dx,140
+        call    window
+
+        call    setm
+        lea     di,scrmes6
+        mov     cx,242
+        mov     dx,118
+        call    wrtext
+        call    beep
+        call    keyav
+        ret
+
+                      
+;       *****************
+;       * WRITE TO FILE *  CX=data lenght
+;       *****************
+
+writef:
+        push    ax,bx,cx,dx
+
+        mov     ah,40h
+        mov     bx,handle
+        int     21h
+
+        pop     dx,cx,bx,ax
+        ret
+
+
+;       **************
+;       * CLOSE FILE *
+;       **************
+
+close:  mov     ah,3eh
+        mov     bx,handle
+        int     21h
+        ret
+
+
+;       ******************
+;       * OPEN SETUP.ENV *
+;       ******************
+
+openset:
+        lea     dx,setfile
+        mov     ah,3dh
+        mov     al,0                  ;Read only
+        int     21h
+        jnc     >s1
+        call    close
+        mov     curency,"$"
+        mov     curenc2,32
+        ret
+
+s1:     mov     bx,ax           ; BX = handle
+        mov     handle,ax
+        mov     cx,120h
+        lea     dx,wrksav
+        mov     ah,3fh
+        int     21h             ; read currency
+        call    close
+        lea     si,wrksav
+        add     si,110h
+        lodsb
+        cmp     al,0
+        jne     >o1
+        mov     al,"$"
+        mov     curency,al
+        mov     al,32
+        mov     curenc2,al
+        ret
+
+o1:     cmp     al,32
+        jne     >o3
+        lodsb
+o3:     mov     curency,al
+        lodsb
+        cmp     al,0
+        je      >o2
+        mov     curenc2,al
+        ret
+o2:     mov     curenc2,32
+        ret
+
+
+;       **************************
+;       * OPEN .ENV & .FDB FILES *
+;       **************************
+
+
+openv:  lea     dx,envfile
+        call    openf
+        jnc     okenv
+        call    close
+
+recrenv:
+        lea     dx,envfile
+        call    create
+        jnc     okreat
+crerr:  lea     dx,errmes1      ; can't create .ENV error
+        call    dismes
+        int     20h
+
+okreat: lea     dx,defname      ; default file
+        mov     cx,50           ; write 50 bytes
+        call    writef
+        call    close
+
+okenv:  lea     dx,envfile
+        call    openf
+        jnc     okop1
+        lea     dx,errmes2      ; can't open .ENV error
+        call    dismes
+        int     20h
+
+okop1:  lea     dx,fname1
+        mov     cx,50
+        call    readf           ; read .ENV file
+        call    close
+
+        mov     cx,50
+        lea     si,fname1
+evl1:   lodsb
+        cmp     al,255
+        je      okop2
+        loop    evl1
+evl2:   jmp     recrenv         ; recreate .ENV if invalid
+
+okop2:  lodsb
+        and     al,3
+        mov     dspflg,al
+        lodsb                   ; unused for now...
+
+        lodsb
+        cmp     al,255
+        jne     evl2
+        call    close
+
+opfdb:  cmp     byte ptr[80h],2   ; command line arument?
+        ja      >o1
+        jmp     opnfn             ; open filename
+
+o1:     mov     byte ptr[80h],0   ; clear command line
+        mov     cx,39
+        mov     si,81h
+        lea     di,fname1
+
+m1:     lodsb
+        cmp     al,32
+        je      m1
+        cmp     al,13
+        je      >m2
+        stosb
+        loop    m1
+m2:     mov     al,0
+        stosb                     ; EOL
+
+opnfn:  lea     dx,fname1
+        call    openf           ; open database .CDB
+        jnc     nop3            ; DBASE found ?
+        call    close
+        lea     dx,fname1       ; Create it if not found
+        call    create
+        call    close
+
+        lea     dx,fname1
+        call    openf
+nop3:   lea     di,linbuf
+        mov     ax,0
+        stosw                   ; clear old index
+        mov     last,1
+        call    getbal
+        mov     ax,index
+        mov     last,ax
+        mov     index,1
+        ret
+
+
+;       ******************
+;       * EDIT .ENV FILE *
+;       ******************
+
+edenv:  call    close
+        lea     dx,envfile
+        call    openf
+
+        mov     al,dspflg
+        and     al,3
+        mov     fname1+47,al    ;save display flag
+        lea     dx,fname1
+        mov     cx,50
+        call    writef
+        call    close
+        ret
+
+
+;       **********************
+;       * GET LINE FROM FILE *
+;       **********************
+
+getlin:
+        push    ax,bx,cx,dx
+        cmp     last,0
+        je      >g1
+        mov     cx,60
+        lea     dx,linbuf
+        call    readf           ; read 60 bytes
+g1:     pop     dx,cx,bx,ax
+        ret
+
+
+;       ***************
+;       * GO TO INDEX * AX=index number
+;       ***************
+
+goindx: push    ax,bx,cx,dx
+        cmp     ax,0
+        je      goind1
+        cmp     last,0
+        je      goind1
+        dec     ax
+        mov     eof,0
+        mov     cx,60
+        mul     cx
+        mov     cx,ax
+
+        xchg    cx,dx
+        mov     ah,42h
+        mov     al,0
+        mov     bx,handle
+        int     21h
+        jnc     goind1
+        inc     eof
+
+goind1: pop     dx,cx,bx,ax
+        ret
+
+
+;       **************
+;       * PRINT LINE * AL= # of line (1-12)
+;       **************
+
+prnlin: push    ax,bx,cx,dx
+
+        cmp     last,0
+        jne     >b15
+        jmp     b12
+
+b15:    mov     cx,13
+        mov     ah,0
+        mul     cx              ; multiply AL by CX
+        mov     dx,ax
+        add     dx,15           ; DX has VERT position
+         
+        lea     di,linasc
+        mov     al,32
+        mov     bl,[bufnot+22]  ; TAG
+        cmp     bl,"x"          ; NOT TAGGED
+        je      >b19
+        mov     al,4
+
+b19:    stosb
+        call    prndat          ; print date
+
+        mov     al,32
+        stosb
+        stosb
+
+        call    setm
+        cmp     dspflg,1
+        jne     >b30
+        push    cx,dx,di
+        lea     di,colab1
+        mov     cx,140
+        mov     dx,11
+        call    wrtext
+        pop     di,dx,cx
+        lea     si,bufnot
+        jmp     >b14
+
+b30:    cmp     dspflg,2
+        jne     >b31
+        push    cx,dx,di
+        lea     di,colab2
+        mov     cx,140
+        mov     dx,11
+        call    wrtext
+        pop     di,dx,cx
+        lea     si,bufnam
+        jmp     >b14
+
+b31:    push    cx,dx,di
+        lea     di,colab3
+        mov     cx,140
+        mov     dx,11
+        call    wrtext
+        pop     di,dx,cx
+        call    prntyp          ; print type
+
+b14:    mov     cx,13
+b10:    lodsb
+        cmp     al,0
+        jne     >b16
+        mov     al,32
+b16:    stosb                   ; transaction display
+        loop    b10
+
+        mov     al,32
+        stosb
+        stosb
+        stosb
+
+        mov     ax,check
+        call    binasc          ; check # display
+
+        mov     cx,7
+        mov     al,32
+b11:    stosb
+        loop    b11
+    
+        lea     di,linasc
+        add     di,35
+        mov     al,curency
+        stosb
+        mov     al,curenc2
+        stosb
+        mov     al,32
+        stosb
+
+        mov     cl,4
+        mov     ch,1
+        lea     si,amnt3
+        call    bcdstr
+
+        mov     al,32
+        stosb
+        stosb
+        mov     al,curency
+        stosb
+        mov     al,curenc2
+        stosb
+
+        mov     al,32
+        mov     bl,blnc4
+        and     bl,8
+        je      >b17
+        call    adjust
+        mov     al,"-"
+
+b17:    stosb
+        cmp     blnc4,0
+        jne     >b18
+        cmp     blnc3,0
+        jne     >b18
+        cmp     blnc2,0
+        jne     >b18
+        cmp     blnc1,0
+        jne     >b18
+        cmp     blnc0,0
+        jne     >b18
+
+        mov     al,32
+        stosb
+
+b18:    mov     cl,5
+        mov     ch,1
+        lea     si,blnc4
+        call    bcdstr
+
+        call    setm
+        mov     al,8
+        call    setrule
+        mov     al,0
+        stosb                   ; EOL mark
+        mov     cx,1
+        lea     di,linasc
+        call    wrtext
+        mov     al,0
+        call    setrule
+        call    seplin
+b12:    pop     dx,cx,bx,ax
+        ret
+
+
+;       **************
+;       * PRINT TYPE *
+;       **************
+
+prntyp: mov     al,transc
+        cmp     al,"C"
+        jne     >b3
+        lea     si,chemes
+        jmp     >b10
+b3:     cmp     al,"D"
+        jne     >b4
+        lea     si,depmes
+        jmp     >b10
+b4:     cmp     al,"W"
+        jne     >b5
+        lea     si,witmes
+        jmp     >b10
+b5:     cmp     al,"T"
+        jne     >b6
+        lea     si,trames
+        jmp     >b10
+b6:     cmp     al,"S"
+        jne     >b7
+        lea     si,sermes
+        jmp     >b10
+b7:     cmp     al,"I"
+        jne     >b8
+        lea     si,intmes
+        jmp     >b10
+b8:     cmp     al,"x"
+        jne     >b9
+        lea     si,cncmes
+        jmp     >b10
+
+b9:     call    close
+        mov     ax,3
+        int     5fh             ; back to CGA
+        lea     dx,errmes5      ; Corrupted Database file
+        call    dismes
+        int     20h             ; DOS
+b10:    ret
+
+
+;       **************
+;       * PRINT DATE *   DI > output string
+;       **************
+
+prndat: push    ax,bx
+        cmp     month,9
+        ja      >b1
+        mov     al,"0"
+        stosb
+b1:     mov     ah,0
+        mov     al,month
+        call    binasc
+        mov     al,"-"
+        stosb
+
+        cmp     date,9
+        ja      >b2
+        mov     al,"0"
+        stosb
+b2:     mov     ah,0
+        mov     al,date
+        call    binasc
+        mov     al,"-"
+        stosb
+
+        mov     ax,year
+        cmp     al,80
+        ja      >b4
+        add     ax,100         ; for year 2000+
+b4:     add     ax,1900        ; adds 19..
+        call    binasc
+        pop     bx,ax
+        ret
+
+
+;       *************************
+;       * BCD TO STRING CONVERT *  SI=input DI=output CL=lenght
+;       *************************                     CH=dot
+
+bcdstr: push    ax,cx,dx
+        mov     dl,32
+        mov     dh,ch
+        mov     ch,0
+
+        push    si,cx
+b6:     lodsb
+        cmp     al,0
+        jne     >b5
+        loop    b6
+        pop     cx,si
+
+        push    cx
+        inc     cx
+        mov     al,32
+b8:     stosb
+        loop    b8
+
+        mov     al,"0"
+        stosb
+        mov     al,"."
+        stosb
+        mov     al,"0"
+        stosb
+        stosb
+        pop     cx
+        jmp     >b7
+
+b5:     pop     cx,si
+b3:     cmp     dh,cl
+        jne     >b4
+        mov     al,"."
+        stosb
+b4:     lodsb
+        mov     ah,al
+        shr     al,1
+        shr     al,1
+        shr     al,1
+        shr     al,1
+        and     al,15
+        cmp     al,0
+        je      >b1
+        mov     dl,48
+
+b1:     add     al,dl
+        stosb
+        mov     al,ah
+        and     al,15
+        cmp     al,0
+        je      >b2
+        mov     dl,48
+b2:     add     al,dl
+        stosb
+        loop    b3
+b7:     pop     dx,cx,ax
+        ret
+
+
+;       *****************
+;       * DEC TO BINARY * DX <offset string, result > AX  CX< number of chars
+;       *****************
+
+decbin:
+        push    bx,cx,dx,si,bp
+
+        mov     ax,0
+        mov     bx,dx
+        mov     si,0
+
+repeat:
+        mov     dx,10
+        mov     bp,ax
+        mul     dx
+        mov     dl,[bx+si]
+
+        inc     si
+
+        cmp     dl,0
+        je      >r1
+        cmp     dl,13
+        je      >r1
+        cmp     dl,48
+        jb      >r3
+        cmp     dl,57
+        ja      >r3
+
+        sub     dl,48
+        mov     dh,0
+        add     ax,dx
+        loop    repeat
+r1:     mov     ax,bp
+r2:     pop     bp,si,dx,cx,bx
+        ret
+
+r3:     mov     ax,0
+        jmp     r2
+
+;       **********************
+;       * BIN TO ASC CONVERT *  AX < binary value DI=buffer
+;       **********************  out: CX > has # of digits
+
+binasc:
+        push    ax,bx,dx
+
+        mov     bx,10
+        mov     cx,0
+
+decomp:
+        mov     dx,0
+        div     bx
+        push    dx
+        inc     cx
+        cmp     ax,0
+        jnz     decomp
+
+
+prndec: pop     ax
+        push    ax
+        add     al,48
+        stosb
+        pop     ax
+        loop    prndec
+
+        pop     dx,bx,ax
+        ret
+
+
+;       ****************
+;       * BCD TO ASCII * in=AL out=AX
+;       ****************
+
+bcdasc: push    bx
+        mov     bl,al
+        and     bl,0fh
+        add     bl,48
+        mov     bh,al
+        shr     bh,1
+        shr     bh,1
+        shr     bh,1
+        shr     bh,1
+        and     bh,0fh
+        add     bh,48
+        mov     al,bl
+        mov     ah,bh
+        pop     bx
+        ret
+           
+
+;       ****************
+;       * CONVERT LINE *
+;       ****************
+
+convlin:
+        push    ax,bx,cx,dx
+        lea     si,linbuf
+        lodsw
+        mov     index,ax
+
+        lodsb
+        mov     month,al
+        lodsb
+        mov     date,al
+        lodsb
+        mov     ah,0
+        mov     year,ax
+
+        lodsb
+        mov     transc,al
+        lodsw
+        mov     check,ax
+
+        lodsb
+        mov     amnt3,al
+        lodsb
+        mov     amnt2,al
+        lodsb
+        mov     amnt1,al
+        lodsb
+        mov     amnt0,al
+
+        lodsb
+        mov     blnc4,al
+        lodsb
+        mov     blnc3,al
+        lodsb
+        mov     blnc2,al
+        lodsb
+        mov     blnc1,al
+        lodsb
+        mov     blnc0,al
+
+        mov     cx,23
+        lea     di,bufnot
+b1:     lodsb
+        stosb
+        loop    b1
+
+        mov     cx,20
+        lea     di,bufnam
+b2:     lodsb
+        stosb
+        loop    b2
+
+        pop     dx,cx,bx,ax
+        ret
+
+
+;       ************************
+;       * POWER MANAGEMENT CTL *
+;       ************************
+
+slpon:  call    slpctl
+        cmp     al,0
+        je      slpon
+        ret
+
+slpoff: call    slpctl
+        cmp     al,0
+        jne     slpoff
+        ret
+
+
+slpctl: mov     dx,ds
+        mov     ax,4dd4
+        int     15h
+
+        mov     ax,0
+        mov     es,ax
+        mov     es:al,[04d6]
+        mov     ah,4eh
+        int     15h
+        push    cs
+        pop     es
+        ret
+
+
+;       ************
+;       * MESSAGES *
+;       ************
+
+
+;    Error Messages
+;---------------------
+
+n100mes db      7,10,"This program runs only on the HP100LX palmtop.",13,10,"$"
+errmes1 db      7,10,"Can't create Enviroment file on C:\_DAT.",13,10,"$"
+errmes2 db      7,10,"Can't open Enviroment file on C:\_DAT.",13,10,"$"
+errmes3 db      7,10,"Can't open .CDB file.",13,10,"$"
+errmes4 db      7,10,"Error in Enviroment file.",13,10,"$"
+errmes5 db      7,10,"Corrupted .CDB (database) file.",13,10,"$"
+errmes6 db      "            ERROR",0
+
+
+;   Window Top messages
+;------------------------
+
+appmes  db      " Account  Transaction  Search  Quit  Help",0
+
+helpms  db      "F1 = This help screen.         SPACE= tag/untag  ",0
+        db      "F2 = Write a check (payment).    V  = toggle     ",0
+        db      "F3 = Deposit to account.              display    ",0
+        db      "F4 = Withdrawal from account.   DEL = cancel     ",0
+        db      "F5 = Transfer of funds.               transaction",0
+        db      "F6 = Service charges.          ENTER= edit       ",0
+        db      "F7 = Add Interest to account.         transaction",0
+        db      "F8 = View Current Balance.      INS = insert     ",0
+        db      "F9 = Page Up (PGUP)                   transaction",0
+        db      "F10= Page Down (PGDN)           ESC = Quit.      ",255,0
+
+tranmes db      "   Transaction type:",0," ",0
+        db      "     [C] Check       [D] Deposit",0
+        db      "     [W] Withdrawal  [T] Transfer",0
+        db      "     [S] Service     [I] Interest.",0," ",0
+        db      "   Change type (C/D/W/T/S/I) or ENTER",255,0
+
+topmes  db      " CheckLOG 3.4  HP100LX Checkbook manager. ACCOUNT:                              ",0
+header1 db   10,"   DATE      TRANSACTION  CHECK    AMOUNT      BALANCE          NAME",13,10,10
+wintop1 db      "           About CheckLog",0
+wintop2 db      "                           On-Line Help.",0
+wintop3 db      "    DATE      TRANSACTION   CHECK     AMOUNT        BALANCE   ",0
+wintop4 db      "                             Deposit",0
+
+wintop5 db      "                      TRANSACTION  "
+winitem db      20 dup(32),0,0
+
+wintop6 db      "                            WITHDRAWAL",0
+wintop7 db      "                        TRANSFER OF FUNDS",0
+wintop8 db      "                             SERVICE",0
+wintop9 db      "                              CHECK",0
+wintopa db      "                            INTEREST",0
+
+wintop12 db     "                       OPEN ACCOUNT",0
+wintop13 db     "                    CREATE NEW ACCOUNT",0
+wintop14 db     "                    CURRENT BALANCE",0
+wintop15 db     "                       SEARCH VALUE",0
+wintop16 db     "             EXTRACT TO FILE",0
+
+wintop17 db     "                   EDIT TRANSACTION  "
+winitem2 db     20 dup(32),0,0
+
+wintop18 db     "                   CANCEL TRANSACTION",0
+wintop19 db     "                BALANCE HISTORY UPDATE",0
+wintop20 db     "                 INSERTING TRANSACTION",0
+wintop21 db     "                        INSERT TRANSACTION",0
+wintop22 db     "                     ATTENTION!",0
+
+
+;     Option Messages
+;------------------------
+
+optmes1 db      "Open Another Account",0,"Create New Account",0,"Create .LST file ",0
+        db      "Create .PRN file ",0,"Lock   Account   ",0,"Unlock Account   ",255,0
+
+optmes2 db      "Edit Transaction ENTER",0,"Cancel Transaction DEL",0
+        db      "Insert Transaction [I]",0,"Check              F2",0
+        db      "Deposit            F3",0,"Withdrawal         F4",0
+        db      "Transfer           F5",0,"Service            F6",0,"Interest           F7",255,0
+
+optmes3 db      "Check #   ",0,"Amount   ",255,0
+optmes5 db      "On-line Help  F1",0,"About CheckLOG   ",255,0
+optmes6 db      "Option             1",0,"Option             2",0,"Option             3",0
+        db      "Option             4",255,0
+
+
+;    Bottom Messages
+;------------------------
+
+botmes1 db      " Help  "," Check "," Depos  "," Wthdr","  "
+        db      " Trans ","  Serv ","  Inter "," Blnce","   "
+        db      " PgUp  "," PgDn  ",0
+
+botmes2 db      "       ","       ","        ","      ","  "
+        db      "       ","       ","        ","      ","   "
+        db      "       ","  O.K. ",0
+
+botmes3 db      "       ","       ","        ","      ","  "
+        db      "       ","       ","        ","      ","   "
+        db      " Cancel","  O.K. ",0
+
+;      Misc Messages
+;------------------------
+
+inptyp  db      "Type :",0
+inpchk  db      " Check #",0
+inpamn  db      "Amount $ ",0
+inpnot  db      "Note :",0
+inpbal  db      "Balance $ ",0
+inprec  db      "Reconciled $ ",0
+inpfile db      "Filename",0
+inpname db      "Name :",0
+
+okmes   db      "  OK  ",0
+canmes  db      "Cancel",0
+scrmes3 db      "Creating CHKLOG.PRN file...",0
+scrmes4 db      "Hit ESC to cancel...",0
+scrmes6 db      "File not found.",0
+scrmes7 db      "Creating CHKLOG.LST file...",0
+scrmes8 db      "Press F10 to ERASE highlighted transaction ",0
+scrmes9 db      " Updating BALANCE, please wait...",0
+scrmesa db      "INSERTING empty record, please wait...",0
+scrmesb db      "Account is Locked.",0
+scrmesc db      "The Account is now Locked.",0
+scrmesd db      "The Account is now Unlocked.",0
+scrmese db      "Press any key to continue...",0
+scrmesf db      "  Press 'U' to unlock...",0
+
+depmes  db      "+  Deposit  +",0
+witmes  db      "-Withdrawal -",0
+trames  db      "- Transfer  -",0
+sermes  db      "-  Service  -",0
+intmes  db      "% Interest  %",0
+chemes  db      "-   Check   -",0
+cncmes  db      "x CANCELLED x",0
+
+colab1  db      "    NOTE   ",0
+colab2  db      "    NAME   ",0
+colab3  db      "TRANSACTION",0
+
+datemes db      "Date :",0
+chksrc  db      "Check #",0
+amnsrc  db      "Amount $ ",0
+srchmes db      "Searching ...",0
+
+bufdat  db      14 dup(0)
+bufchk  db      8 dup(0)        ; do not change place !
+bufamn  db      12 dup(0)       ;    "   "
+bufbal  db      16 dup(0)       ;    "   "
+bufnot  db      25 dup(0)       ;    "   "
+bufnam  db      25 dup(0)       ;    "   "
+
+hdr1    db      0,0,0           ; keep it before 'entbuf' !
+entbuf  db      16 dup(0)
+hdr2    db      0,0,0           ; keep it before 'decbuf' !
+decbuf  db      16 dup(0)
+
+aboutms db      "    HP100LX Checkbook ",0
+        db      "    By: Harry Konstas",0
+        db      "       Version 3.4",0
+        db      "    Freeware. (f)1994",255,0
+
+fmask1  db      055h, 0aah, 055h, 0aah, 055h, 0aah, 055h, 0aah,0,0
+
+
+efname  db      "chklog.lst",0
+pfname  db      "chklog.prn",0
+defname db      "chklog.cdb"
+        db      36 dup(0),255,0,0,255
+fname1  db      46 dup(0),255,0,0,255
+envfile db      "c:\_dat\chklog.env",0,0
+setfile db      "c:\_dat\setup.env",0,0
+
+searbuf db      20 dup(0)      ; search buffer
+linbuf  db      60 dup(0)      ; Raw line data buffer
+linasc  db      80 dup(0)      ; line ASCII print buffer
+lstbuf  db      80 dup(0)      ; extraction buffer
+inpbuf  db      65,66          ; input buffer
+buffer  equ     inpbuf+80
+appsav  equ     buffer+100
+scrsav  equ     appsav+2500     ; * DUP reserves nBytes & makes .COM longer
+wrksav  equ     scrsav+17000
+

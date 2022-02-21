@@ -1,0 +1,483 @@
+----------------------------------------------------------------
+         HDM 2.4 DOS APPLICATION MANAGER      (May 25/98)
+----------------------------------------------------------------
+
+_______________
+I.Introduction.
+
+
+ HDM is a DOS application manager which has the same
+graphical user interface as the built-in Application
+Manager of the HP200LX. HDM can also run in DOS, and can
+handle up to 120 applications. You can specify the zoom
+mode, screen, serial port state, command line arguments
+and icon for every application installed. It also has
+some built-in utilities, such as battery setup & status,
+volume control, & system information screen.
+
+
+What's new in Vr.2.4b
+---------------------
+
+ * IMPORTANT: The DOSMGR.DAT file format has been changed!!!
+              Because of this, you need to run the HDMCNV
+              utility so you won't need to re-enter your
+              application data in HDM.
+
+              Please run the included HDMCNV conversion
+              utility ones before installing this new
+              version of HDM!!!! The original DOSMGR.DAT
+              file will be renamed to DOSMGR.BAK.
+
+              If you have several DOSMGR.DAT files that need
+              to be converted, you can specify the name of
+              the .DAT file at the HDMCNV command line,
+
+               e.g.:    hdmcnv myfile.dat
+
+              and it will be converted to the new format.
+              The original file will be renamed: dosmgr.bak
+              When no .DAT file is specified, the default
+              c:\_dat\dosmgr.dat file will be converted.
+
+
+ + You can now browse for a file when launching an
+   application with additional arguments (F8). You
+   can also use F8 repeatedly to select multiple files
+   for the arguments list.
+
+ + Changed the hotkey character of the icon extraction
+   menu option (had the same hotkey as "Exit").
+
+ + The icon extraction feature now creates .ICN filenames
+   using the application names.
+
+ + Topcard is not shown by default.
+
+ + Added a help (tip) entry for each application. This enables
+   the user to attach tips or help information (up to 80
+   characters long) to an application, which will be displayed
+   just before the application is launched.
+
+
+
+Installation:
+-------------
+
+ If you are upgrading from a previous version of HDM, please
+run the HDMCNV conversion utility (included in this ZIP)
+before you install this new version of HDM! The conversion
+utility will convert all your application data stored into
+the c:\_dat\dosmgr.dat file so you won't need to re-enter
+them.
+
+
+ If you plan to use HDM from within System Manager there's
+an icon supplied for this. What I did is installed HDM
+as a new application to the System manager, and moved its
+icon to the top left corner of the screen (first icon).
+
+                    !!IMPORTANT!!:
+To install HDM as an application in the System Manager,
+add the '|' character at the end of the filename so that
+System Manager launches HDM with the maximum possible memory.
+HDM needs AT LEAST 100k of free memory!
+
+For example, if DM.EXE resides in A:\HDM, you should
+enter the following line:
+
+ a:\hdm\dm.exe|        < notice the '|' character!
+
+ You can use HDM from both Application manager and DOS.
+
+ With the growing number of PAL applications that are having the
+same look & feel of the built-in applications, HDM will be
+very usefull.
+
+
+ Here are the contents of the HDM.ZIP file:
+
+ HDMCNV.EXE:  IMPORTANT!!! Run this first if you are
+              upgrading from a previous version of HDM.
+
+ DEMO.BAT:    Demo batch file. This will give you a quick idea
+              on what HDM is all about.
+
+ DEMO.DAT:    Demo application list data-file.
+
+ DM.EXE:      The HDM launcher written by Rob Koenis.
+ HDM.EXE:     The HDM executable. Must run DM.EXE to run it.
+ DM.ICN:      The HDM Icon.
+ HDM.DOC:     This document file.
+
+ ICONS.ZIP:   A small collection of icons you can add to your
+              icon directory. If you don't have an icon
+              directory you should create one for HDM.
+
+ > Files created by HDM:
+
+ DOSMGR.ENV : This file will be created in your C:\_DAT
+              directory. It will hold information such
+              as the Icon directory path, the current
+              cursor position, and all of the topcard info.
+
+ DOSMGR.DAT : This file will be created in your C:\_DAT
+              directory. It will have the list of all the
+              installed applications and icons. Make sure
+              to make a backup of both files when you are
+              done with your application installation.
+
+
+ DM.EXE and HDM.EXE  are the only files needed to run HDM,
+but they MUST reside in the same directory.
+
+ * Make sure to edit your path statement in your AUTOEXEC.BAT
+   file, to include the HDM directory. This is needed so that
+   HDM can be loaded back when a launched application has
+   terminated.
+
+
+_________________
+II. Instructions.
+
+ HDM is quite easy to use. You are probably familiar with the
+built-in Application Manager of your LX. HDM operates very
+much in the same manner. Note that you must run DM.EXE in order
+to use HDM.
+
+ HDM uses about 100k of memory when running, but releases
+all memory that it occupies when launching an application.
+Only 3760 bytes are used by the COMMAND.COM and DM.EXE when
+an application is launched.
+
+ You can specify your own DOSMGR.DAT file if you wish when
+running HDM. The command line arguments are:
+
+ dm <appfile>
+
+ where <appfile> is the name of a valid application-list file.
+This option allows you to use different menu setups. If you
+If the <appfile> isn't a valid DOSMGR.DAT file, HDM will
+run without loading it.
+
+ The first time you will launch DM, you will see the familiar
+TOPCARD picture appear on the screen. You can press any
+key to see the application list. Pressing the [ESC] key will
+quit HDM.
+
+ You can specify the topcard filename in the [MENU][Setup]
+[Owner] menu. You can also enter your name, title, and
+company name that will be displayed at the center of the
+topcard screen.
+
+
+                << NOTE FOR SPEEDY LOADING >>
+
+IMPORTANT: If you would like to speed-up the loading of HDM,
+           you can disable the TOPCARD feature in the SETUP
+           menu. Press [MENU] [Setup] [Owner] and clear
+           the "Show Picture" checkbox. This will make
+           the loading of HDM much faster.
+
+
+ ******************** OPERATION KEYS **************************
+
+ Here's a brief summary of the keys:
+
+ F1 = Quick Help screen.
+ F2 = Add a DOS application.
+ F3 = Edit a DOS application.
+ F4 = Delete a DOS application.
+ F5 = Open (execute) a DOS application.
+ F6 = Open (execute) a DOS applications but prompt for
+      extra command line arguments, or file browsing.
+
+ F7 = Change application Order. Pressing F7 will display
+      the selected application in "negative". You can then
+      use the arrows to the desired new position of the
+      application, and press F10 or ENTER to change
+      its position. The application from the previous
+      position will be swapped with the one on the
+      new position.
+
+ F8 = Show topcard. NOTE: This feature works ONLY if HDM
+      was LOADED with the topcard-display feature enabled
+      from the SETUP menu. The reason for this is that
+      when the topcard feature is enabled, HDM loads it
+      and keeps it in memory, so it can be displayed
+      faster. If you enable the topcard-display feature,
+      YOU MUST quit HDM and run it again so it can be
+      loaded in memory.
+
+ F9 = Page up (same as the PG UP key).
+ F10= Page down (same as the PG DN key).
+
+ [SPACE]  = Displays some system information.
+ [HOME]   = Brings you to the first application.
+ [ENTER]  = Executes the selected application (same as F5).
+ [DEL]    = Removes the selected application from HPMENU.
+ [arrows] = Use them to select an application.
+ [MENU]   = Opens the menu.
+ [ESC]    = Quits HDM.
+ [ZOOM]   = Pressing Fn-SPACE 'zooms' the application names.
+
+ ICON SORT= You have to go through the menu for this. Press
+            [MENU][A][S] and you will be prompted if you
+            want HDM to sort your icons by name. Press F10
+            to do so.
+
+
+ ICON EXTRACTION:
+            This menu option will extract a selected icon
+            from HDM into a c:\appname.icn file, where
+            appname is the name of the application.
+
+
+ YES/NO BOXES:
+
+            When HDM pops up with a YES/NO confirmation box,
+            you can press the ALT-Y, ALT-N key combinations,
+            as well F9/ESC for 'no' and F10 for 'yes'.
+
+
+ ***************** PREDEFINED BUILT-IN HOTKEYS *******************
+
+ You can use the following key combinations to launch any
+ of the 24 displayed applications:
+
+ CTRL-F1 to CTRL-F8   = Hotkeys for the first row of applications.
+ SHIFT-F1 to SHIFT-F8 = Hotkeys for the second row of applications.
+ ALT-F1 to ALT-F8     = Hotkeys for the third row of applications.
+
+                  Picture the following in your mind:
+
+                    | F1  F2  F3  F4  F5  F6  F7  F8
+             -------|----------------------------------
+             CTRL   |  1   2   3   4   5   6   7   8
+             SHIFT  |  9  10  11  12  13  14  15  16
+             ALT    | 17  18  19  20  21  22  23  24
+
+
+ The numbers 1-24 are the 24 currently shown applications. When you
+change the page (PGUP/PGDN) the hotkeys become available to the
+newly displayed applications. Pressing any of these key combinations
+will launch an application.
+
+
+ ****************** USER DEFINED (YOUR OWN) HOTKEYS *****************
+
+ Assigning hotkeys to your applications, is the same procedure as in
+the System Manager. Just precede the key you wish to assign, with the
+ampersand character '&' in the application's name. For example,
+
+   Fli&ght Sim  < The 'g' character is the hotkey.
+   &Vertical    < The 'v' character is the hotkey.
+
+   * HDM is case-insensitive to the hotkey assignments.
+
+ Up to 24 hotkeys can be assigned, and this from A-Z. You can't
+use any other characters, including numbers as hotkeys. If you
+assign the same hotkey to more then one application, only the
+last application will respond to the hotkey.
+
+ To launch an application using one of your hotkeys, just press
+the corresponding key, A-Z.
+
+
+ ****************** APPLICATION MANAGEMENT *********************
+
+ a) ADDING A NEW APPLICATION.
+ -----------------------------
+
+  A DOS application can be any .EXE, .COM or .BAT (batch)
+file. DO NOT use .EXM files as applications! You are not
+obligated to use extensions, but it is recommended.
+
+ If the Icon (*.ICN) has the same name as the application,
+and resides in the same directory as the application, it
+will be displayed first when the icon browser pops up.
+If not, the built-in browser will let you browse all
+the icons in your icon directory. You must specify
+to HDM where your icon directory resides:
+
+ Go into [MENU][Setup][Icon dir]  and enter the path of
+your icon directory. For example, if your icons reside in
+the a:\icons directory, enter the following:
+
+    a:\icons
+
+ If no icon is found, or you pressed the ESC key while
+browsing, the default [hp] graphical icon will be
+displayed instead. Once the icon has been found, HDM
+no longer needs it, since it stores it in the DOSMGR.DAT
+file.
+
+  Ok, now let's add an application:
+
+  You can add a new DOS application by pressing F2, or
+[MENU][Application][Add]. By pressing F2, an entry screen
+will 'pop-up' waiting for the following input:
+
+
+ NAME = The name of the application (not the filename). It
+        will be splitted in 2 equal lines when displayed,
+        of 7 characters each. Use spaces to center it with
+        the icon on the screen. The name will be displayed
+        under the application's icon. It's in this entry
+        field that you can specify the application hotkey.
+        Just precede the hotkey character in the name, with
+        the ampersand symbol '&'.
+
+
+ PATH = The path and filename of the application.
+
+                 example:
+
+                 a:\utility\q.exe
+
+
+ COMMAND TAIL= The command line arguments (if any) of your
+               application. You can also specify other
+               arguments before launching an application
+               by pressing F6.
+
+ HELP=         Here you can attach a small help message (tip)
+               that will be displayed every time you launch
+               the application (provided that the Enable Help
+               checkbox is checked).
+
+
+ ZOOM MODE   = The zoom mode that the application will run:
+               Small 80x25, medium 64x18 or large 40x16.
+
+ B&W MODE    = Sets the palmtop's display in B&W mode.
+
+ INVERT      = Inverts the colors (negative picture) before
+               launching the application. Same effect as the
+               [ON/] key combination.
+
+ DITHER      = Same effect as the [ON*] key combination,
+               which is used to select between 2 display
+               dithering settings.
+
+
+ * NOTE: Some screen settings may appear as if they don't
+         have any affect when launching an application.
+         This is because an application may switch to
+         another video or graphics mode, and the settings
+         won't take affect. These settings are effective
+         with non-graphics applications.
+
+
+ PAUSE       = specifies if the application should wait for
+               a key press before returning to HDM.
+               If enabled, you will be prompted 'Press any key
+               to return to HDM' before the application
+               actually returns to HDM. Use the space-bar
+               to toggle it on/off.
+
+ SERIAL PORT = specifies if HDM should enable the serial
+               port before launching the application.
+               Use the space-bar to toggle on/off.
+               The serial port will be closed upon return
+               to HDM.
+
+ OPEN WITH ARGUMENTS:
+               when enabling this option HDM will prompt you
+               with a window just before launching the
+               application, so you can enter additional
+               command-line arguments. Pressing F8 when you
+               are asked for arguments will open up a file
+               browser. Every time you press F8 and select
+               a file, it will be appended to the argument
+               list.
+
+
+
+ b) Notes on editing an application entry.
+ -----------------------------------------
+
+  If you don't enter a name for the application, the application
+won't be edited. Press F10 to accept the changes, F9 to cancel.
+When editing an application entry, you will be prompted if you
+wish to change its icon.
+
+
+ c) DELETING AN APPLICATION.
+ ----------------------------
+
+  You will be prompted if you really want to delete the selected
+application. Hit F10 to delete, or F9 / ESC to abort. Note
+that the actual application is not deleted from your disk, but
+rather removed from the application list.
+
+
+ d) OPEN (execute) AN APPLICATION.
+ ----------------------------------
+
+  You can either press F5 or ENTER on the selected application
+to open it. The selected application will be launched with
+the defined parameters. HDM will also change to the
+specified drive and directory of the application.
+
+ You can also use the hotkey combinations described earlier
+to launch any of the currently displayed applications.
+
+  If the application is not found, an error message will be
+displayed. You must have enough memory to run the application,
+otherwise a 'not enough memory' error will be displayed.
+
+  Pressing F6 instead of F5, will ask for new command line
+parameters before launching the application. If you do not
+enter any parameters, a file selection box will appear to let
+you select a file as a parameter.
+
+  Please note that if you run HDM from within System Manager,
+the more applications that are open (such as memo, note-taker,
+etc..) the less memory you will have available to launch a
+DOS application with HDM. Close down as many applications
+as possible to release as much memory needed to launch your
+DOS application. You can press the SPACE-BAR while in HDM
+to see the amount of free memory available.
+
+
+
+The following batch file is equivalent to DM.EXE:
+
+                @rem HDM starter.
+                @echo off
+                :lp
+                hdm ~ %1
+                if errorlevel 99 goto quit
+                goto lp
+                :quit
+
+
+ CREDITS:
+
+ HDM was written by using the Palmtop Application Library (PAL).
+Many thanks to all PAL Contributors for creating this
+wonderfull tool.
+
+ I would like to thank Rob Koenis for writing the included
+DM.EXE, for his suggestions and testing of HDM.
+
+ I would also like to thank Hal Goldstein for all of his
+great suggestions.
+
+
+                           ****
+
+
+ HDM is copyrighted freeware, so use it at your own risk!
+ Please distribute this version at its original ZIP file.
+
+ Harry Konstas
+ Internet: hkonstas@total.net
+
+ You can download the latest version of HDM and other PAL
+ applications directly from my web homepage:
+
+   http://www.total.net/~hkonstas
+
+

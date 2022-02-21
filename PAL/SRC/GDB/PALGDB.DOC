@@ -1,0 +1,795 @@
+!short:
+!short:^u General database access routines
+^u General database access routines
+
+This set of functions provides an easy way to read & display
+database records from GDB, PDB and NDB database files. It is
+divided into 2 groups:
+
+General functions:
+
+  - OpenDatabase:    Open a database file.
+  - ShowCard:        Show (graphically) the database card.
+  - ReadRecord:      Read a database record.
+  - ShowRecord:      Show record data (graphically) on the database card.
+  - CloseDatabase:   Close a database file.
+
+Optional functions:
+
+  - GetField:        Get (extract) field data from a record.
+  - ChangeViewPoint: Change the current viewpoint.
+  - ReadLinkdef:     Read a smart clip definition (link-def).
+  - SearchDatabase:  Search database for 1 or 2 strings, using AND/OR operators.
+
+
+ Database functions overview:
+ ----------------------------
+
+ Basically, to display data records from a database file on the
+palmtop, you first need to OpenDatabase(), and use ShowCard()
+to display (graphically) the database card. Then, you can make
+ReadRecord() and ShowRecord() calls to retrieve and display any
+record information from the database file. Finally, CloseDatabase()
+closes the database file, and frees all allocated memory.
+
+ The optional GetField() function can be used if you need to
+handle the record fields individually, either for displaying
+the record information the way you want (bypassing ShowRecord())
+or simply using the field data for other purposes, such as
+database conversion/dump utilities for the desktop.
+
+ There's also a handy search function, called SearchDatabase().
+You can provide up to 2 strings to search, as well the boolean
+operation to be performed: AND/OR. You can also specify if you want to
+search through the note data or not.
+
+ The OpenDatabase() function always loads the viewpoint index table
+of "all database items" in memory. The viewpoint can be changed by
+using the ChangeViewPoint() function.
+
+ Smart-clip records can be loaded when needed with the ReadLinkDef()
+function. OpenDatabase() does not read any smart clip definition,
+this is left to the programmer to do when needed.
+
+ The error handling with these functions is handled in such a way
+that even the low-level functions can pass the error code to the
+highest level (e.g. OpenDatabase(...)). This allows the user to
+intercept an error in any process stage, and provide detailed
+information about the nature of the error without quitting to DOS.
+The error list is shown in PALGDB.H and further below in this
+document. All functions register an error code into pDD->ErrorMsg.
+
+ All database functions use a database descriptor structure,
+named DBDESC. Once the database file is opened by the OpenDatabase()
+function, this structure will hold all the required information
+about the database definition:
+
+
+          /* database description structure */
+          typedef struct {
+             int          ErrorMsg;            /* GDB last error register*/
+             char         FileName[120];       /* DB filename            */
+             WORD         NumFields;           /* number of fields in DB */
+             WORD         NumDataRec;          /* number of records in DB*/
+             int          NumViews;            /* number of viewpoints   */
+             int          NumLinks;            /* number of linkdefs     */
+             FILE        *pDBF;                /* DB FILE ptr            */
+             DBHEADER    *pDBH;                /* database header ptr    */
+             FIELDEF     *pFDEF[MAXFIELDS];    /* field definition array */
+             CARDDEF     *pCDEF[MAXFIELDS];    /* card definition array  */
+             CARDPAGE    *pCPAG;               /* card page definition   */
+             PLOOKUP     *pLOOK;               /* lookup table pointer   */
+             WORD        *pFTAB;               /* Type first table ptr   */
+             VIEWPTDEF   *pVDEF;               /* Current Viewpoint def. */
+             int         *pVTAB;               /* Current Viewpoint table*/
+             SCLINKDEF   *pLINK;               /* Current Link-definition*/
+             char        *pCATS;               /* Category strings ptr   */
+          } DBDESC;
+
+ Here are the definitions of a few usefull pointers/variables
+ in the DBDESC structure:
+
+ pDD->ErrorMsg:   Integer holding the error message of the
+                  last database operation. All functions update
+                  this variable. See below for the error list.
+
+ pDD->FileName:   Filename of the currently open database.
+ pDD->pDBF:       Pointer to the file handle of the database file.
+ pDD->NumFields:  The total number of fields in the database.
+ pDD->NumViews:   Total number of viewpoint records.
+ pDD->NumLinks:   Total number of link (smart-clip) records.
+ pDD->NumRecData: The total number of valid data records (records marked
+                  as deleted are not counted).
+
+ pDD->pFDEF[n]->Name:
+                  Pointer to a field name, where n is the field ID number.
+                  Field names are text strings, labeling the fields.
+
+ pDD->pCDEF[n]:   Array of pointers to card definition structures for
+                  the graphical/logical definition of each field. This is
+                  used by ShowCard() to create the graphical representation
+                  of the database card on the screen. See PALGDB.H for
+                  more details.
+
+ pDD->pCPAG:      Pointer to the card page definition structure, used
+                  to describe multiple-card databases.
+
+ pDD->pDBH:       Pointer to the database header structure. See PALGDB.H
+                  for more details.
+
+ pDD->pVDEF:      Pointer to a viewpoint definition structure of the current
+                  viewpoint.
+
+ pDD->pVTAB:      Pointer to an integer array of indexes of the current
+                  viewpoint.
+
+ pDD->pLINK:      Pointer to the current link (smart-clip) definition.
+                  Note that OpenDatabase() does not read any link-defs,
+                  leaving this pointer to NULL. This is optional database
+                  data, left to the programmer to read, when needed.
+
+ pDD->pCATS:      Pointer to a string having all the category strings
+                  of the database file (if any) separated by semi-colons.
+                  The lenght of this string never exceeds 255 bytes.
+
+ pDD->pCPAG->PageCount:  Number of pages of the database card. When pDD->pCPAG
+                         is NULL, there's only 1 page (default).
+
+
+  Here's the list of the GDB error codes that each function stores
+  into pDD->ErrorMsg:
+
+/* GDB error messages */
+typedef enum {
+   OPERATION_OK=0,        /* 00 all's well...                     */
+   RECORD_DELETED,        /* 01 the record is marked as 'deleted' */
+   OUT_OF_MEMORY,         /* 02 out of memory (malloc)            */
+   RECORD_NOT_FOUND,      /* 03 specified record is not found     */
+   FREAD_ERROR,           /* 04 file read operation error         */
+   NO_LOOKUP_TABLE,       /* 05 the lookup table is missing       */
+   INVALID_LOOKUP,        /* 06 the lookup table is invalid       */
+   INVALID_DATABASE,      /* 07 not a valid database file         */
+   WORLDTIME_DATABASE,    /* 08 this is a world-time DB file      */
+   APPTBOOK_DATABASE,     /* 09 this is an appointment book file  */
+   NO_VIEWPTABLE,         /* 10 can't find a viewpoint table      */
+   NOT_MULTICARD,         /* 11 database has only 1 card page     */
+   MISSING_FIELDEFS,      /* 12 missing field definition          */
+   NO_REC_DATA,           /* 13 there's no record data to process */
+   CANT_OPEN_FILE,        /* 14 can't open database file          */
+   UNEXPECTED_REC_TYPE,   /* 15 unexpected record type            */
+   INVALID_FIELD,         /* 16 field is invalid                  */
+   INVALID_FIELD_TYPE,    /* 17 non-existent field type           */
+   NO_NOTE,               /* 18 data record has no note attached  */
+   EMPTY_FIELD,           /* 19 field is empty                    */
+   STR_FOUND,             /* 20 search has found a match          */
+   STR_NOT_FOUND,         /* 21 search did not find a match       */
+   INVALID_VIEWPOINT,     /* 22 viewpoint is invalid              */
+   RECNUM_OUT_OF_RANGE,   /* 23 record number out of range        */
+} GDBMSGS;
+
+
+!short: OpenDatabase         Open a database file.
+   NAME
+      OpenDatabase
+
+   DESCRIPTION
+      This function opens a database file by just providing the
+      database filename. It automatically loads in memory all
+      the important database structure info, as well the lookup
+      tables, field and card definitions. It also reads the
+      general viewpoint definition & index table. No link (smart-
+      clip) definition is loaded in memory - this is optional
+      data that the programmer may read by using the ReadLinkDef()
+      function.
+
+
+   SYNOPSIS
+      #include "pal.h"
+      DBDESC *OpenDatabase(char *filename, int *ErrorMsg);
+
+   INPUTS
+
+      filename:  Path & filename of a valid GDB, PDB or NDB
+                 database file. If no extension is given,
+                 .GDB will be used as default.
+
+      ErrorMsg:  Here you must pass the address of an integer
+                 where OpenDatabase() will store the error
+                 code if an error occurs. Please note that
+                 when an error occurs, OpenDatabase() frees
+                 *all* memory it allocated till that point.
+
+   RETURN VALUE
+                 Returns NULL if a fatal error occured (i.e.
+                 missing lookup table, out of memory, fread errors)
+                 OpenDatabase() returns the error code into the
+                 ErrorMsg integer.
+
+      DBDESC:    On success it returns a pointer to a DBDESC structure
+                 (database descriptor). This structure will have pointers
+                 to all crucial database information, such as lookup table,
+                 field definition table, card definition table, viewpoint
+                 definition, and more.
+
+
+   NOTE
+      OpenDatabase() frees all allocated memory and closes the database
+      file if an error occurs while opening the database. The ErrorMsg
+      integer will have the error code giving a more detailed report
+      on what exactly happened. See the function overview section for
+      the list of error codes.
+
+      The pDD->NumDataRec variable has the actual number of valid
+      data records found in the database file. This number is
+      updated when a viewpoint is loaded (by ChangeViewPoint()).
+
+
+   SAMPLE:
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <dos.h>
+
+#include <pal.h>
+
+void main (int argc, char * argv[])
+{
+   DBDESC *pDD;
+   void   *pData;
+   int     f, page =1, error;
+
+   if(argc < 2) FatalExit("\nUSAGE: show <dbfile>\n",1);
+
+   if(!PalInit(1)) FatalExit("Init failed - CGAGRAPH not loaded ?", 1);
+
+   /* open database */
+   pDD = OpenDatabase(argv[1], &error);
+
+   if(!pDD) {
+      TextMode();
+      fprintf(stderr,"\aFatal Error #%d opening database.\n", error);
+      exit(1);
+   }
+
+   /* show all records */
+   for(f=0; f<pDD->NumDataRec; f++) {
+      printf("\r(%d/%d)", f, pDD->NumDataRec);   /* show record number */
+
+      /* read a record */
+      pData = ReadRecord(pDD, TYPE_DATA, f);
+
+      /* show the record */
+      if(pData) {
+         ShowCard(pDD, page);           /* show card */
+         ShowRecord(pDD, page, pData);  /* show record data */
+
+         GetKey();
+         if(inportb(0x60)==1) break;    /* ESC key quits */
+
+         /* discard record */
+         free(pData);
+      }
+   }
+
+    /* close database */
+   CloseDatabase(pDD);
+
+   PalDeInit(1);
+
+}
+
+!Seealso: CloseDatabase ReadRecord ShowRecord ShowCard
+
+!short: ReadRecord           Read a database record.
+   NAME
+      ReadRecord
+
+   DESCRIPTION
+      This function reads a specified record, of a specified
+      type, from an open database file. It returns a pointer
+      to the record data (the record header is discarded).
+
+
+   SYNOPSIS
+      #include "pal.h"
+      void *ReadRecord(DBDESC *pDD, BYTE Type, WORD RecNum);
+
+   INPUTS
+      DBDESC:    Pointer to DBDESC structure of an open
+                 database, previously opened by OpenDatabase().
+
+      Type:      The record type that we want to read (usually
+                 TYPE_DATA). See PALGDB.H for the list of
+                 record types.
+
+      RecNum:    The record number of the specified record
+                 type we want to read.
+
+
+   RETURN VALUE
+      Returns a void pointer to the record data that is
+      stored in memory. You must free() this record data
+      storage yourself when you no longer need it.
+      If an error occured it returns NULL, as well the
+      error code into pDD->ErrorMsg.
+
+   NOTE
+      When the record type is TYPE_DATA (usually is) the
+      ReadRecord() function will use the RecNum number as
+      an index to the currently loaded viewpoint table,
+      (all-database-records by default) and get a resulting
+      record number from that. Different viewpoints
+      can be used with ReadRecord(), by loading the
+      desired viewpoint table with the ChangeViewPoint()
+      function.
+
+
+   SAMPLE
+      Please refer to the OpenDatabase() sample.
+
+!Seealso: OpenDatabase CloseDatabase ShowRecord ChangeViewPoint
+
+!short: ShowCard           Show the database card (graphic layout).
+   NAME
+      ShowCard
+
+   DESCRIPTION
+      This function will display (graphically) the database card
+      of the opened database, as it would be shown by System manager's
+      DATABASE application.
+
+   SYNOPSIS
+      #include "pal.h"
+      int ShowCard(DBDESC *pDD, int page);
+
+   INPUTS
+      DBDESC:    Pointer to DBDESC structure of an open
+                 database, previously opened by OpenDatabase().
+
+      page:      Page number (1-4) of the database card. Most
+                 database files have only 1 page, but up to
+                 4 pages can be defined and displayed.
+
+
+   RETURN VALUE
+      Returns the number of fields displayed in the current page
+      of the database card. Returns zero if an error occured.
+
+   NOTE
+      You can find how many card pages a database file has by
+      reading the pDD->CPAG->PageCount variable. If pDD->CPAG
+      is NULL, there's only 1 page per card. If a non-existent
+      page number is given, the first page will be displayed.
+
+   SAMPLE
+      Please refer to the OpenDatabase() sample.
+
+!Seealso: OpenDatabase CloseDatabase ShowRecord
+
+!short: GetField           Get field data from a record.
+   NAME
+      GetField
+
+   DESCRIPTION
+      Usually the ShowRecord() function is used to display
+      the contents of a record on the screen, but you can
+      use this function if you need to handle the individual
+      field data of a record yourself.
+
+   SYNOPSIS
+      #include "pal.h"
+      char *GetField(DBDESC *pDD, int FieldNum, void *pRecData);
+
+   INPUTS
+      DBDESC:    Pointer to DBDESC structure of an open
+                 database, previously opened by OpenDatabase().
+
+      FieldNum:  The field ID number. A database record may
+                 contain one or more fields. Field numbers
+                 start at 0, up to pDD->NumFields. A small
+                 for() loop can be used with GetField() to
+                 retrieve all the field data one by one from
+                 a record.
+
+      pRecData:  This pointer must point to a block of record
+                 data previously retrieved by the ReadRecord()
+                 function.
+
+
+   RETURN VALUE
+      Returns the data (string of text) from the specified
+      field. For the moment date & time field types are returned
+      in a fixed format. If the field type is a checkbox or
+      a radio button, the returned string will be a character
+      'X' or ' ' character (ASCII 32) depending on the state
+      of the boolean field (TRUE/FALSE). Fields that hold no
+      data will return NULL (group field types or statics for example).
+
+      Returns NULL if an error occurs, as well the error code
+      into pDD->ErrorMsg.
+
+   NOTE
+      The returned date format of a date type of field is YY/MM/DD.
+      The returned time format of a time type of field id HH:MM
+      in 24-hour format.
+
+   SAMPLE:
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <dos.h>
+#include <conio.h>
+
+#include <pal.h>
+
+void main (int argc, char * argv[])
+{
+   DBDESC *pDD;
+   void   *pData, *pField;
+   int     r,f, page =1, error;
+
+   if(argc < 2) FatalExit("\nUSAGE: show <dbfile>\n",1);
+
+   /* open database */
+   pDD = OpenDatabase(argv[1], &error);
+
+   if(!pDD) {
+      TextMode();
+      fprintf(stderr,"\aFatal Error #%d opening database.\n", error);
+      exit(1);
+   }
+
+
+   /* show all records */
+   for(r=0; r<pDD->NumDataRec; r++) {
+
+      /* read a record */
+      pData = ReadRecord(pDD, TYPE_DATA, r);
+
+      /* show the record */
+      if(pData) {
+
+         /* show all fields */
+         for(f=0;f<pDD->NumFields;f++) {
+
+            /* get field data */
+            pField = GetField(pDD, f, pData);
+            if(pField) printf("%s = %s\n",pDD->pFDEF[f]->Name, pField);
+            free(pField);
+         }
+
+         getch();
+
+         /* discard record */
+         free(pData);
+      }
+   }
+
+    /* close database */
+   CloseDatabase(pDD);
+
+
+}
+
+
+!Seealso: OpenDatabase CloseDatabase ShowRecord ReadRecord()
+
+!short: ShowRecord         Show a record on the screen (graphically).
+   NAME
+      ShowRecord
+
+   DESCRIPTION
+      This function displays the contents of a specified TYPE_DATA
+      record on the screen.
+
+   SYNOPSIS
+      #include "pal.h"
+      int        ShowRecord(DBDESC *pDD, int page, void *pRecData);
+
+   INPUTS
+      DBDESC:    Pointer to DBDESC structure of an open
+                 database, previously opened by OpenDatabase().
+
+      page:      The card page number, 1-4. If 0 is given,
+                 1st page will be shown.
+
+      pRecData:  This pointer must point to a block of record
+                 data previously retrieved by the ReadRecord()
+                 function. The record data must be of TYPE_DATA.
+
+
+   RETURN VALUE
+      Returns the number of fields that have been displayed.
+      Returns zero if an error occured.
+
+
+   NOTE
+      ShowCard() call must be made before using ShowRecord()
+      so that the records are displayed inside the database
+      card (graphics mode). The page number must also match
+      the one of the ShowCard() call, so that the record data
+      of the specified page are displayed on the appropriate
+      card page.
+
+
+   SAMPLE
+      Please refer to the OpenDatabase() sample.
+
+!Seealso: OpenDatabase CloseDatabase ShowRecord ReadRecord()
+
+!short: SearchDatabase       Search the database records for strings
+   NAME
+      SearchDatabase
+
+   DESCRIPTION
+      This function can search for up to 2 strings within a
+      specified range of data records, using AND/OR boolean
+      operators. It returns the record number if a match
+      is found.
+
+
+   SYNOPSIS
+      #include "pal.h"
+      int SearchDatabase(DBDESC *pDD, int start, int end,
+                 char *string1, char *string2, int logic, int nflag);
+
+
+   INPUTS
+      DBDESC:    Pointer to DBDESC structure of an open
+                 database, previously opened by OpenDatabase().
+
+      start:     record number where the search should start.
+      end:       record number where the search should end.
+      string1:   pointer to the first search string (mandatory).
+      string2:   pointer to the second search string (optional).
+      logic:     search logic when 2 strings are provided:
+
+                  AND_LOGIC: searches for string1 AND string2 match.
+                  OR_LOGIC:  searches for string1 OR string2 match.
+
+      nflag:     Include notes in search, flag:
+
+                  INC_NOTES:  search through notes.
+                  SKIP_NOTES: do not search notes (faster search).
+
+   RETURN VALUE
+      The index of the record (TYPE_DATA) where the match was found.
+      This number can be used to retrieve the record using the
+      ReadRecord() function. When no match is found, it returns -1.
+      pDD->ErrorMsg can be checked for any errors.
+
+   NOTE
+
+   SAMPLE
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <dos.h>
+
+#include <pal.h>
+
+void main (int argc, char * argv[])
+{
+
+   DBDESC *pDD;
+   void   *pData;
+   char   s1[80];
+   int     f, page =1, error;
+
+   if(argc < 3) FatalExit(" -> USAGE: find <dbfile> \"string\"\n",1);
+
+   if(!PalInit(1)) FatalExit("Init failed - CGAGRAPH not loaded ?", 1);
+   strcpy(s1,argv[2]);
+
+   /* open database */
+   pDD = OpenDatabase(argv[1], &error);
+
+   if(!pDD) {
+      TextMode();
+      fprintf(stderr,"\aFatal Error #%d opening database.\n", error);
+      exit(1);
+   }
+
+
+   /* search for 1 string only - include notes in search */
+   f=SearchDatabase(pDD, 0, pDD->NumDataRec, s1, NULL, OR_LOGIC, INC_NOTES);
+
+   if(f!=-1) {
+
+      printf("\r(%d/%d)", f, pDD->NumDataRec);   /* show record number */
+
+      /* read a record */
+      pData = ReadRecord(pDD, TYPE_DATA, f);
+
+      /* show the record */
+      if(pData) {
+         ShowCard(pDD, page);           /* show card */
+         ShowRecord(pDD, page, pData);  /* show record data */
+
+         GetKey();
+
+         /* discard record */
+         free(pData);
+      }
+   }
+
+   else {
+      printf("\a\nNot found!!");
+      getch();
+   }
+
+    /* close database */
+   CloseDatabase(pDD);
+
+   PalDeInit(1);
+
+
+}
+
+
+!Seealso: OpenDatabase ReadRecord GetField ShowRecord
+
+!short: CloseDatabase        Close an open database file.
+   NAME
+      CloseDatabase
+
+   DESCRIPTION
+      This function closes an open database file, and frees
+      all allocated memory.
+
+
+   SYNOPSIS
+      #include "pal.h"
+      void CloseDatabase(DBDESC *pDD);
+
+   INPUTS
+      DBDESC:    Pointer to DBDESC structure of an open
+                 database, previously opened by OpenDatabase().
+
+   RETURN VALUE
+      None.
+
+   NOTE
+
+   SAMPLE
+      Please refer to the OpenDatabase() sample.
+
+!Seealso: OpenDatabase
+
+!short: ChangeViewPoint        Change the current viewpoint.
+   NAME
+      ChangeViewPoint
+
+   DESCRIPTION
+      This function can be used to change the current viewpoint
+      to another available viewpoint in the database file. It reads
+      the specified viewpoint definition AND viewpoint table,
+      and stores it in the database descriptor structure (DBDESC).
+      The ReadRecord() function works in conjunction with
+      ChangeViewPoint() since it reads records of the loaded
+      viewpoint only.
+
+      (A viewpoint table is a data record index array, for all
+       records of a viewpoint).
+
+   SYNOPSIS
+      #include "pal.h"
+      int ChangeViewPoint(DBDESC *pDD, int ViewPoint);
+
+   INPUTS
+      DBDESC:    Pointer to DBDESC structure of an open
+                 database, previously opened by OpenDatabase().
+
+      ViewPoint: The viewpoint index number, 0 to pDD->NumViews.
+
+   RETURN VALUE
+      Returns TRUE on success, FALSE otherwise (keeping original
+      viewpoint table). The current viewpoint variable
+      pDD->pDBH->CurrentViewpt is updated with the new Viewpoint
+      index.
+
+      The viewpoint definition can be found at pDD->pVDEF and
+      the viewpoint table at pDD->pVTAB. Other information about
+      the viewpoint such as viewpoint name, column information
+      and SSL strings can be accessed by the pDD->pVDEF pointer:
+
+        /* viewpoint definition */
+        typedef struct {
+                int  TokenLenght;    /* lenght of SSL Token representation  */
+                int  StringLenght;   /* lenght of SSL string representation */
+                int  Flags;          /* Viewpoint flags                     */
+                char Reserved;
+                char Name[32];       /* Viewpoint name                      */
+                int  SortField[3];   /* Index of fieldef to sort            */
+                int  Ascending[3];   /* 1=ascending, 0=descending           */
+                int  ColumnInfo[20]; /* MSB=Field# LSB=Width                */
+                char *pSSLtokens;    /* pointer to SSL tokens               */
+                char *pSSLstring;    /* pointer to SSL string               */
+        } VIEWPTDEF;
+
+      There's also the viewpoint table which can be found at pDD->pVTAB,
+      which is an array of indexes of the current viewpoint.
+
+      The pDD->ErrorMsg integer can be checked for detailed error
+      report.
+
+   NOTE
+      The OpenDatabase() function automatically reads ViewPoint
+      definition & table #0 (All records).
+      Every time a viewpoint is changed using this function,
+      all allocated memory of the previous viewpoint is
+      discarded.
+
+   SAMPLE
+
+      /* display all viewpoint names */
+      for(r=0;r<pDD->NumViews;r++) {
+        ChangeViewPoint(pDD,r);
+        printf("%d=%s\n",r,pDD->pVDEF->Name);
+      }
+
+
+!Seealso: OpenDatabase GetRecord ReadLinkDef
+
+!short: ReadLinkDef          Read a link (smart-clip) definition.
+   NAME
+      ReadLinkDef
+
+   DESCRIPTION
+      This function reads a specified smart-clip (link) definition
+      and stores it in the DBDESC structure. The current link
+      definition is replaced by the new one.
+
+   SYNOPSIS
+      #include "pal.h"
+      int ReadLinkDef(DBDESC *pDD, int LinkDef);
+
+   INPUTS
+      DBDESC:    Pointer to DBDESC structure of an open
+                 database, previously opened by OpenDatabase().
+                 The link definition (once loaded) can be
+                 accessed from pDD->pLINK.
+
+      LinkDef:   Index number of a smart-clip definition. The
+                 value here is: 0 to pDD->NumLinks.
+
+   RETURN VALUE
+
+      Returns TRUE if a valid link definition was loaded into
+      the DBDESC structure, FALSE otherwise (keeping previous
+      linkdef).
+
+      The SCLINKDEF structure, is defined as follows:
+
+                 /* smart clip (link) definition */
+                 typedef structure {
+                   int  StringLenght;
+                   int  Flags;
+                   char Name[32];
+                   char *pLinkString;
+                } SCLINKDEF
+
+
+      The pDD->ErrorMsg integer can be checked for detailed
+      error report.
+
+   NOTE
+      Since link definitions are not mandatory to read and display
+      database records, the OpenDatabase() function does not read
+      any link definition records to save memory. The pDD->pLINK
+      pointer is NULL when a database file is opened. However,
+      every time you use ReadLinkDef(), the link definition data
+      will be loaded into the DBDESC structure at pDD->pLINK
+      (replacing any previous link definitions).
+
+   SAMPLE
+
+      /* display all smart-clip names */
+      for(r=0;r<pDD->NumLinks;r++) {
+        ReadLinkDef(pDD,r);
+        printf("%d=%s\n",r,pDD->pLINK->Name);
+      }
+
+
+!Seealso: OpenDatabase ChangeViewPoint
+

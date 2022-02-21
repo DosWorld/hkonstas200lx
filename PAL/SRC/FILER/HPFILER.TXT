@@ -1,0 +1,882 @@
+
+             ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+             ³   The HP 200LX Filer Protocol.  ³
+             ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+
+ This document describes the filer protocol used by the HPx00LX
+palmtops. This is not official documentation, therefore it may
+contain some errors. The information contained here comes from
+many different sources. I would like to thank Mr. Heinz Ozwirk
+for providing all the detailed info for each and every filer
+command listed here. He spend countless hours hacking the filer
+protocol (and I thought I was the only one<g> :-) and he provided
+us with detailed information about his findings.
+
+I would also like to thank Christopher Koh from HP for helping
+us out.
+
+You can reach Mr. Heinz Ozwirk at: HOzwirk@msn.com
+
+You also can reach me, the editor of this document, at:
+Harry Konstas: 72540.620@compuserve.com
+
+
+________________
+1. Introduction.
+
+
+ The filer protocol used in the HPx00LX palmtops is designed to
+enable data transfers between 2 computers, using a serial line
+or an infared port. In addition to file transfers, the protocol
+also enables the client to manage directories on the server,
+change file attributes, and more.
+
+ Like any typical data transfer protocol, such as XMODEM & ZMODEM,
+communications occur in blocks of data, called packets.
+
+ There are 2 kinds of packets: A REQUEST packet, and a REPLY
+packet. Communications are initiated by the CLIENT by sending
+a REQUEST packet. The SERVER must always respond to the CLIENT
+by sending a REPLY packet. If the server doesn't respond, the
+client will send the same request packet again (up to 5 times).
+If the server still does not respond, communications are aborted.
+
+
+
+       Computer A                             Computer B
+      ÚÄÄÄÄÄÄÄÄÄÄÄ¿       request packet     ÚÄÄÄÄÄÄÄÄÄÄÄÄ¿
+      ³  CLIENT   ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ> ³  SERVER    ³
+      ³           ³       reply packet       ³            ³
+      ³ (master)) ³ <ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´  (slave)   ³
+      ÀÄÄÄÄÄÄÄÄÄÄÄÙ                          ÀÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+
+                            _______
+                             Fig.1
+
+
+
+______________________
+2. Packet description.
+
+
+ There are 2 types of packets: REQUEST packets, and REPLY packets,
+which are very similar. They are described on the following table:
+
+
+ ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+ ³                                                        ³
+ ³HPx00LX FILER PROTOCOL REQUEST/REPLY  PACKET DEFINITION ³
+ ³                                                        ³
+ ÃÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³OFFSET³      VALUE(s)      ³         DESCRIPTION        ³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³  0   ³   0x16, 0x16, 0x16 ³   SYNC Sequence            ³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³  3   ³     0x10, 0x02     ³   Start of packet header   ³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³  5   ³        0x01        ³   Program to execute       ³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³  6   ³        0xnn        ³   Procedure to execute     ³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³  7   ³        0xnn        ³   Sequence number          ³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³  8   ³     0x01 / 0x81    ³   Packet type (REQ/REP)    ³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³  9   ³     0x02 / 0xnn    ³   Program revision / status³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³*10   ³       (data)       ³   Variable amount of data  ³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³ nn   ³     0x10, 0x03     ³   Start of CRC header      ³
+ ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+ ³ nn+2 ³     0xnn, 0xnn     ³   16-bit CRC  (LSB, MSB)   ³
+ ÀÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+  * If the request packet has no data (command-only) the
+    CRC header immediatly follows the program revision byte.
+    Reply packets always return 2 zero bytes (0x00 0x00) after
+    the variable amount of raw data (or even if there are no
+    data at all).
+
+
+                         ________
+                          Fig. 2
+
+
+
+
+ Now let's describe in more detail each packet element.
+
+
+ a) SYNC sequence
+ ----------------
+
+ Every packet starts with this 3 byte (0x16,0x16,0x16) sequence.
+It is some kind of a signature, an I.D. if you prefer, which
+identifies the beginning of a packet. If for some uknown reason
+the data transfer has been interrupted (such as infared obstruction)
+the server must be able to find the beginning of a packet from the
+stream of data that the client will continue sending, and attempt
+to re-synchronize with the client. This is the job of these 3 bytes.
+
+
+ b) Headers
+ ----------
+
+ In the filer protocol, there are a few *special* headers
+marked by an escape character, a 0x10 byte. Those headers
+do not take part in the CRC checksum computation. There are
+3 special headers, described here:
+
+
+      1) Start of packet header ( 0x10, 0x02 ):
+
+ This sequence marks the start of a packet. The receiver should
+immediately be reset to receive a new packet. If this sequence
+is received inside a packet, the current packet has not been
+sent completely and should be discarded.
+
+
+      2) Start of CRC header ( 0x10, 0x03 ):
+
+ This sequence marks the beginning of the CRC sequence. It
+enables a receiver to receive and validate all packets, even
+those it doesn't understand.
+
+
+      3) Data value (Invalidate header) (0x10, 0x10):
+
+ Since the 0x10 character is used as an escape character to
+identify the special headers, and 0x10 characters may also
+be part of raw (insignificant) data, the only way to send a
+0x10 value so that the server doesn't interpret it as some
+kind of header, is to invalidate it by preceding it with
+another 0x10 byte. The server will then assume that it is
+not an escape character, but a 0x10 data value.
+
+ ALL 0x10's (including the ones in the raw data part of the
+packet) but except those two starting a packet or a CRC sequence
+MUST be prefixed by another 0x10 so that the server can
+identify it as a data value instead of a header. Only one
+of these bytes is used to update the CRC. In other words,
+all 0x10 data values must be sent twice. On the receiving
+side, all 0x10, 0x10 sequences must discard one of the
+0x10 values.
+
+
+ c) Program to execute
+ ---------------------
+
+ In the filer protocol, this byte is ALWAYS 0x01. This byte
+is also the FIRST byte that gets computed by the CRC routine.
+(all bytes before this one in the packet are not computed).
+
+
+ d) Procedure to execute
+ -----------------------
+
+ This byte holds the command code that the client requests
+from the server. The rest of the packet really depends on this
+code. The requested procedure is executed on the server side.
+On a reply packet coming from the server, this byte holds the
+procedure that the server executed. See section 3 of this
+document for detailed information on each procedure.
+
+
+ Here is a table listing all the filer procedures:
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+³                                                                            ³
+³               HPx00LX FILER PROTOCOL PROCEDURE SUMMARY                     ³
+³                                                                            ³
+ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³       PROCEDURE NAME       ³ VALUE  ³            DESCRIPTION               ³
+ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³DFILER_PROC_SINIT           ³   0x40 ³Initiate filer communications         ³
+³DFILER_PROC_TERMINATE       ³   0x41 ³Terminate filer communications        ³
+³DFILER_PROC_CLOSE           ³   0x01 ³Close file                            ³
+³DFILER_PROC_COPYDT          ³   0x02 ³Copy date/time stamp to file          ³
+³DFILER_PROC_CREATE          ³   0x03 ³Create a new file                     ³
+³DFILER_PROC_DELETE          ³   0x04 ³Delete a file                         ³
+³DFILER_PROC_FCREAT          ³   0x05 ³Over-write / create new file          ³
+³DFILER_PROC_GETDIR          ³   0x06 ³Get current directory                 ³
+³DFILER_PROC_GETDRV          ³   0x07 ³Get current drive                     ³
+³DFILER_PROC_IDENT           ³   0x08 ³Return type of pathname               ³
+³DFILER_PROC_MATCH           ³   0x09 ³Request next directory match          ³
+³DFILER_PROC_MKDIR           ³   0x0a ³Make a directory                      ³
+³DFILER_PROC_OPENRO          ³   0x0b ³Open a file for read only             ³
+³DFILER_PROC_READ            ³   0x0c ³Read data from an open file           ³
+³DFILER_PROC_RENAME          ³   0x0d ³Rename a file                         ³
+³DFILER_PROC_RMDIR           ³   0x0e ³Remove a directory                    ³
+³DFILER_PROC_SEEK            ³   0x0f ³Seek file pointer to a new position   ³
+³DFILER_PROC_SETDIR          ³   0x10 ³Set to a new directory                ³
+³DFILER_PROC_SETDRV          ³   0x11 ³Set to a new drive                    ³
+³DFILER_PROC_SETPAT          ³   0x12 ³Define a directory search pattern     ³
+³DFILER_PROC_TELL            ³   0x13 ³Return absolute seek position of file ³
+³DFILER_PROC_VOLUME          ³   0x14 ³Return current volume name            ³
+³DFILER_PROC_WRITE           ³   0x15 ³Write data to an open file            ³
+³DFILER_PROC_POPMATCH        ³   0x16 ³Remove directory search pattern       ³
+³DFILER_PROC_GETFDT          ³   0x17 ³Get date & time of last modification  ³
+³DFILER_PROC_PUTFDT          ³   0x18 ³Change date/time of last modification ³
+³DFILER_PROC_GETATTR         ³   0x19 ³Get file attributes                   ³
+³DFILER_PROC_SETATTR         ³   0x1a ³Set file attributes                   ³
+³DFILER_PROC_GET_DRIVE_LIST  ³   0x1b ³Return list of valid server drives    ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+                                 ________
+                                  Fig. 3
+
+
+
+
+ e) Sequence number
+ ------------------
+
+ The first packet that is send by the client has a sequence
+number of zero 0x00. The client increments this value on
+every new packet that is send to the server. If an error
+occured and the same packet must be send, the packet number
+is not incremented. The last packet (closing filer communications)
+must also be 0x00. If the packet value exceeds 0xff, the next
+value rolls back to 0x00.
+
+ On the reply packet, the returned sequence number must match
+the one send by the client, to ensure that it is the correct
+reply packet, and that the 2 computers are in sync.
+
+
+ f) Packet type
+ --------------
+
+ On a request packet this byte is always 0x01, and a reply packet
+always returns a 0x81. This is probably to avoid confusion, if both
+computers are set as clients, so they can identify what kind of
+packets they receive.
+
+
+ g) Program revision / status
+ ----------------------------
+
+ On a request packet, this value is always 0x02. On a reply
+packet, sometimes this value holds a status/error code. At
+this moment we don't have the information about these codes.
+
+
+ h) Packet Data
+ --------------
+
+ The structure of this field depends on the command sent. In
+packets sent by the server this field almost always begin with
+6 bytes representing three 16-bit integers using little-indian
+notation. Only responses for the connect (DFILER_PROC_SINIT)
+and terminate commands (DFILER_PROC_TERMINATE) differ from this
+format. Those 3 16-bit integers usually supply information
+about the size of a path/filename string, or size of raw data.
+
+See section 3 of this document for more details on the packet
+data structure.
+
+
+
+ i) CRC Header
+ -------------
+
+ This two-byte sequence (0x10, 0x03) precedes the 16-bit
+CRC of the packet as a CRC identifier. The 0x03 byte is
+the last packet byte computed by the CRC routine.
+
+
+
+ j) 16-bit CRC
+ -------------
+
+ The CRC is computed over all bytes starting with 0x01 ("Program
+to execute" byte) right after the packet header (0x10, 0x02) and
+ending with the 0x03 at the beginning of the CRC 16-bit value. The
+CRC is initialised with 0x00. It is updated for each byte using
+the algorithm implemented below:
+
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+³ Update CRC Routine                                       ³
+³ Input:       CRC for all bytes read so far               ³
+³              The next byte read                          ³
+³ Output:      CRC for all bytes including the new one     ³
+ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³                                                          ³
+³WORD UpdateCRC(WORD crc, BYTE data)                       ³
+³   {                                                      ³
+³   crc ^= data;                                           ³
+³   for (int i = 0; i < 8; i++)                            ³
+³      {                                                   ³
+³      crc = (crc >> 1) ^ ((crc & 1) ? 0xA001 : 0);        ³
+³      }                                                   ³
+³   }                                                      ³
+³                                                          ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+                          _______
+                           Fig.4
+
+
+
+ * A byte with a value of 0x10 is used as an escape character.
+   The byte itself is not part of the packet, and it is not
+   included into CRC computations.
+
+
+ Now here are both request & rely hex dumps of the filer initiation
+ packets:
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+³           REQUEST PACKET OF DFILER_PROC_SINIT             ³
+ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³0x16,0x16,0x16 ³ SYNC sequence                             ³
+³0x10,0x02      ³ Packet header                             ³
+³0x01           ³ Program to execute                        ³
+³0x40           ³ Procedure to execute (DFILER_PROC_SINIT)  ³
+³0x00           ³ Packet sequence number                    ³
+³0x01           ³ Packet type (REQUEST)                     ³
+³0x02           ³ Program revision                          ³
+³0x10,0x03      ³ CRC header                                ³
+³0x10,0xbf      ³ CRC checksum (LSB, MSB)                   ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+³           REPLY PACKET OF DFILER_PROC_SINIT               ³
+ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³0x16,0x16,0x16 ³ SYNC sequence                             ³
+³0x10,0x02      ³ Packet header                             ³
+³0x01           ³ Program to execute                        ³
+³0x40           ³ Procedure to execute (DFILER_PROC_SINIT)  ³
+³0x00           ³ Packet sequence number                    ³
+³0x81           ³ Packet type (REPLY)                       ³
+³0x02           ³ Program revision                          ³
+³0x00, 0x00     ³ Packet data (end of)                      ³
+³0x10,0x03      ³ CRC header                                ³
+³0x10,0xbf      ³ CRC checksum (LSB,MSB)                    ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+                       ________
+                        Fig. 5
+
+______________________________
+3. Filer procedures (commands)
+
+
+ This section describes the filer procedures. Here we only
+describe the format of the packet header and the data field.
+Ofcourse all commands are prefixed by a SYNC sequence, a packet
+header, and followed by a CRC sequence.
+
+ NOTE: The 'nn' bytes shown on each procedure sequence below
+       are the packet sequence number. All numbers shown are
+       in HEX format.
+
+
+
+   DESCR.         NAME          CODE
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Close File ³DFILER_PROC_CLOSE³ 0x01 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  01 nn 01 02 hl hh
+ Server:  01 nn 81 02 00 00 el eh 00 00
+
+Use this command to close a file on the server. (hl, hh) are
+the low and high bytes of the file handle returned by the open
+or create command. (el, eh) is the error code returned by the
+filer. These bytes are zero, if no error has been detected.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Create File ³DFILER_PROC_CREATE³ 0x03 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  03 nn 01 02 ll lh filename 00 00
+ Server:  03 nn 81 02 00 00 el eh hl hh
+
+This command creates and opens a new file on the server. (ll,
+lh) is the length of the filename. The filename may be any
+valid MS-DOS pathname. Probably it does not matter whether the
+name is terminated by a null character or not.
+
+If the file has been created, (hl, hh) is the handle of the file
+and (el, eh) are zero. If an error is detected, it is returned
+in the bytes marked (el, eh).
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Delete File ³DFILER_PROC_DELETE³ 0x04 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  04 nn 01 02 ll lh filename 00 00
+ Server:  04 nn 81 02 00 00 el eh 00 00
+
+This command deletes a file on the server. (ll, lh) is the
+length of the filename. The filename may be any valid MS-DOS
+pathname. Probably it does not matter whether the name is
+terminated by a null character or not.
+
+If this command fails (el, eh) contain an error code. Otherwise
+these bytes are zero.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Get Current Directory ³DFILER_PROC_GETDIR³ 0x06 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  06 nn 01 02 Dv 00
+ Server:  06 nn 81 02 00 00 el eh ll lh path 00 00 00 00
+
+Use this command to get the current directory of the specified
+drive. Dv is a drive letter, 'A' for A:, 'B' for B:, etc.
+If the drive is valid, the server returns the name of the
+current directory of that drive. The length of the name is
+returned in the bytes marked (ll, lh). Except for the root, the
+drive does not end with a backslash character. The path is not
+terminated with a null character. The number of trailing zeros
+may vary. They are not included in the length of the path. If
+the drive is not valid, an error code is returned in the bytes
+marked by (el, eh).
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Get Current Drive ³DFILER_PROC_GETDRV³ 0x07 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  07 nn 01 02
+ Server:  07 nn 81 02 00 00 00 00 dv 00
+
+This command returns the current drive. In the byte dv. The
+current drive name is a letter between 'A' and 'Z'. 
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Identify Path ³DFILER_PROC_IDENT³ 0x08  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client:  08 nn 01 02 ll lh path 00 00
+ Server:  08 nn 81 02 00 00 el eh pt 00
+
+
+This command determines the type of an MS-DOS pathname. (ll,
+lh) is the length of the name.
+
+The server returns the type of the name as pt. If path is the
+name of an existing file, the type is 0x01. If it is the name
+of a directory, the type is 0x02. The type is 0x00, if the path
+is not the name of an existing file or directory. I don't know
+whether this function can return an error.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Find Next Directory Entry ³DFILER_PROC_MATCH³ 0x09 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  09 nn 01 02
+ Server:  09 nn 81 02 00 00 el eh ll lh direntry mf 00 00 00
+
+This command requests the next directory entry matching the
+pattern defined with the DFILER_PROC_SETPAT command. (ll, lh)
+is the length of the directory entry. The directory entry is
+usually followed by four bytes. The first of these bytes
+- mf - is a boolean value. If this byte is 0x01, the directory
+entry is valid. If this byte is 0x00, the directory entry is
+not valid, and the entire directory has been read.
+
+Even if the directory entry is not valid, the server should
+send a directory entry with at least 22 bytes. Otherwise the
+client in a 200LX will refuse the packet and re-send the
+request.
+
+The directory entry sent by the server uses the following format:
+
+
+ÚÄÄÄÄÄÄÂÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+³Offset³Bytes³                Description                     ³
+ÃÄÄÄÄÄÄÅÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³0x00  ³ 1   ³ File attributes:                               ³
+³      ³     ³   0x01: read only                              ³
+³      ³     ³   0x02: hidden                                 ³
+³      ³     ³   0x04: system                                 ³
+³      ³     ³   0x08: not used (volume label?)               ³
+³      ³     ³   0x10: directory                              ³
+³      ³     ³   0x20: archive                                ³
+ÃÄÄÄÄÄÄÅÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³0x01  ³ 2   ³ Time of last modification in MS-DOS FAT format ³
+ÃÄÄÄÄÄÄÅÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³0x03  ³ 2   ³ Date of last modification in MS-DOS FAT format ³
+ÃÄÄÄÄÄÄÅÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³0x05  ³ 4   ³ Length of file in bytes                        ³
+ÃÄÄÄÄÄÄÅÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+³0x09  ³ ?   ³ Filename as a zero-terminated string.          ³
+ÀÄÄÄÄÄÄÁÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+                          _______
+                           Fig.6
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Make Directory ³DFILER_PROC_MKDIR³ 0x0A ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  0A nn 01 02 ll lh path 00 00
+ Server:  0A nn 81 02 00 00 el eh 00 00
+
+
+This command creates a new directory on the server. (ll, lh) is
+the length of the path name.
+
+If the server could not create the directory, it returns an
+error code in place of el and eh. If the directory has been
+created, these bytes are zero.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Open File For Reading ³DFILER_PROC_OPENRO³ 0x0B ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  0B nn 01 02 ll lh filename 00 00
+ Server:  0B nn 81 02 00 00 el eh hl hh
+
+This command opens a file for reading. (ll, lh) is the length
+of the filename.
+
+If the server could not open the file, it sends an error code
+in place of el end eh. If the file has been opened, these bytes
+are zero, and the file handle is returned in place of hl and hh.
+Use this handle in subsequent read, seek, tell and open calls.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Read From File ³DFILER_PROC_READ³ 0x0C ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  0C nn 01 02 hl hh ll lh
+ Server:  0C nn 81 02 00 00 el eh ll lh data
+
+Use this command to read from an open file. (hl, hh) is the
+handle of the file returned by DFILER_PROC_OPENRO. (ll, lh) is
+the number of bytes to read. This number must not exceed 2048
+bytes.
+
+The server reads from the current read position. It then advances
+the read position by the number of bytes read. If an error is
+detected during the read operation, an error code is returned in
+place of el and eh. (ll, lh) is the number of bytes actually read.
+It is immediately followed by the bytes read.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Rename A File ³DFILER_PROC_RENAME³ 0x0D  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client: 0D nn 01 02 ll lh old_name 00 00 ll lh new_name 00 00
+ Server: 0D nn 81 02 00 00 el eh 00 00
+
+ Errors: 0xD5 -> The old and the new name do not specify the
+                 same drive.
+
+This command renames a file on the server. It may also be used
+to move a file from one directory to another directory on a single
+drive. The first (ll, lh) pair is the length of the old name. The
+second one is the length of the new name. Both names may contain
+a path. Neither name has to include a null terminator.
+
+If the server could not rename the file, it returns an error in
+place of el and eh. If the operation was successful, these bytes
+are zero.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Remove Directory ³DFILER_PROC_RMDIR³ 0x0E  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client:  0E nn 01 02 ll lh path 00 00
+ Server:  0E nn 81 02 00 00 el eh 00 00
+
+This command deletes a directory on the server. The directory
+must not contain any files or sub-directories. Again (ll, lh)
+is the length of the following name.
+
+If the server could not delete the directory, it returns an error
+code in place of el and eh. If the directory has been deleted,
+these bytes are zero.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Set File Read/Write Position ³DFILER_PROC_SEEK³ 0x0F  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client:  0F nn 01 02 hl hh ml mk p0 p1 p2 p3
+ Server:  0F nn 81 02 00 00 el eh 00 00
+
+This command moves a file's read/write pointer. (hl, hh) is
+the handle of the file. (p0, p1, p2, p3) is the distance of the
+new read/write position from the beginning of the file ((ml, mh)
+== 0), the current read/write position ((ml, mh) == 1) or the end
+of the file ((ml, mh) == 2).
+
+If the server detects an error, it returns an error code in place
+of el and eh. If there is no error, these bytes are zero.
+
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Set Current Directory ³DFILER_PROC_SETDIR³ 0x10  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client: 10 nn 01 02 ll lh path 00 00
+ Server: 10 nn 81 02 00 00 el eh 00 00
+
+This command selects the current directory. (ll, lh) is the
+length of the directory name.
+
+If the specified directory does not exist, the server returns
+an error code in place of el and eh. If no error has been
+detected, these bytes are zero.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Set Current Drive ³DFILER_PROC_SETDRV³ 0x11  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client:  11 nn 01 02 dv 00
+ Server:  11 nn 81 02 00 00 el eh 00 00
+
+This command selects the current drive. The byte marked dv
+contains the drive letter of the desired drive. This must be
+an upper-case letter.
+
+If the selected drive does not exist, the server returns an
+error in place of el and eh. Otherwise these bytes are zero.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Define A Directory Search Pattern ³DFILER_PROC_SETPAT³ 0x12 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  12 nn 01 02 ll lh pattern 00 00
+ Server:  12 nn 81 02 00 00 el eh 00 00
+
+Use this command to begin a directory search. (ll, lh) is the
+length of the search pattern. The pattern may contain a drive
+letter, a path, and a filename part with '*' and '?' wildcards.
+
+If the pattern is not valid, the server returns an error code in
+place of el and eh. Otherwise these bytes are zero.
+
+If this command does not return an error code, you should read
+all directory entries with the DFILER_PROC_MATCH command. You
+must always read all directory entries. Otherwise the filer
+will stack old patterns, and it will run out of memory sooner
+or later. For more information see "Nested Directory Searches"
+further down in this paper.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Get File Read/Write Position ³DFILER_PROC_TELL³ 0x13  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client: 13 nn 01 02 hl hh
+ Server: 13 nn 81 02 00 00 el eh p0 p1 p2 p3
+
+This command returns the absolute read/write position of a file.
+(hl, hh) is the handle of the file of interest.
+
+The server returns the current read/write position as a four byte
+number with the least significant byte first. In case of an error,
+an error code is returned in place of el and eh. Otherwise these
+bytes are zero.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Get Volume Name ³DFILER_PROC_VOLUME³ 0x14  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client:  14 nn 01 02
+ Server:  14 nn 81 02 00 00 el eh ll lh volumename s0 s1 s2 s3
+
+This command returns the name of the currently selected drive.
+If the current drive has no volume name, a number of spaces is
+returned. The volume name is followed by a long integer (s0...s3)
+containing the size of the disk's unused space. If an error is
+detected, an error code is returned in place of el and eh.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Write To File ³DFILER_PROC_WRITE³ 0x15  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client:  15 nn 01 02 hl hh ll lh data
+ Server:  15 nn 81 02 00 00 el eh ll lh
+
+Use this command to write data to a file on the server. The
+file must have been opened with the DFILER_PROC_CREATE command.
+(hl, hl) is the handle of the destination file. (ll, lh) is the
+number of bytes to write. This value must not exceed 2048 bytes.
+The data bytes immediately follow this count.
+
+The server writes the given bytes to the file at the current
+read/write position. It then advances the read/write position
+beyond the new bytes. It returns the number of bytes actually
+written in place of ll and lh. If an error is detected, an error
+code is returned in place of el and eh. Otherwise these bytes
+are zero.
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Remove Search Pattern From Stack ³DFILER_PROC_POPMATCH³ 0x16) ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client:  16 nn 01 02
+ Server:  16 nn 81 02 00 00 el eh 00 00
+
+This command removes a search pattern from the servers stack.
+If the server detects an error, it returns an error code in place
+of el and eh. Otherwise these bytes are zero. For more information
+see "Nested Directory Searches" later in this paper.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Get File Date And Time ³DFILER_PROC_GETFDT³ 0x17 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  17 nn 01 02 hl hh
+ Server:  17 nn 81 02 00 00 el eh tl th dl dh
+
+This command returns the date and time of the last modification
+of an open file. (hl, hh) is the handle of the file.
+
+In case of an error, the server returns an error code in place
+of el and eh. Otherwise these bytes are zero and the date and
+time are returned in (dl, dh) and (tl, th) respectively. MS-DOS
+FAT date and time formats are used.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Set File Date And Time ³DFILER_PROC_PUTFDT³ 0x18 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client:  18 nn 01 02 hl hh tl th dl dh
+ Server:  18 nn 81 02 00 00 el eh 00 00
+
+This command changes the date and time of the last modification
+of an open file. (hl, hh) is the handle of the file, (tl, th)
+is the new modification time, and (dl, dh) is the new date. Both
+date and time use MS-DOS FAT format.
+
+If the server detects an error, it returns an error code in place
+of el and eh. Otherwise these bytes are zero.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄ¿
+³Get Drive List ³DFILER_PROC_GET_DRIVE_LIST³ 0x19 ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÙ
+
+ Client: 19 nn 01 02
+ Server: 19 nn 81 02 00 00 el eh ll lh drives 00
+
+This command returns a list of all valid drive letters. (ll,lh)
+is the length of the drive letter list. The list contains a single
+upper-case letter for each drive. This seems to be a list of all
+configured drives. Not necessarily all these drives really exist.
+
+If the server detects an error, it returns an error code in place
+of el and eh. Otherwise these bytes are zero.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Open Connection ³DFILER_PROC_SINIT³ 0x40  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client:  40 00 01 02
+ Server:  40 00 81 02 00 00
+
+This command establishes a connection to the server. I suspect
+that the nulls sent by the server might be replaced by an error
+code. But what errors should be expected? Either the server
+receives the packet and opens the connection, or it simply
+ignores it, and the command fails.
+
+
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+³Terminate Connection ³DFILER_PROC_TERMINATE³ 0x41  ³
+ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+
+ Client:  41 00 01 02
+ Server:  41 00 81 02 el eh
+
+ Errors:  0xFF3E -> Sequence number is not zero.
+
+This command terminates the connection to the server. It's
+sequence number must always be 0x00. Otherwise the server will
+not terminate the connection.
+
+
+                          ****
+
+
+
+____________________________
+4. Nested Directory Searches
+
+ All directory searches must be completed, i.e. after the client
+begins a search with DFILER_PROC_SETPAT, it must read all directory
+entries until DFILER_PROC_MATCH returns an invalid entry.
+
+ Sometimes, however, the client might want to begin a search
+while the previous search is not yet finished. In this case
+the client could either read the remaining entries of the first
+search, and then begin the second search. But what if the client
+wants to continue the first search after the second search has
+been completed?
+
+ Whenever the client begins a new search before the previous
+search has been finished, the filer pushes the first search onto
+its stack before it starts the second search. After the second
+search is completed, the client must tell the filer to pop the
+previous search from its stack. Then the client can read the
+remaining entries from its initial search.
+
+
+_____________
+5. Conclusion
+
+
+This document does not cover all commands of HP's filer. I'm
+still looking for the packet formats for the following commands:
+
+DFILER_PROC_COPYDT  (copy date/time stamp from one file to another)
+DFILER_PROC_FCREAT  (same as DFILER_PROC_CREATE?)
+DFILER_PROC_GETATTR (get file attributs).
+DFILER_PROC_SETATTR (set file attributs).
+
+I am also looking for a list of error codes sent by the filer.
+
+
+_______________________________________
+6. Final Remarks from Mr. Heinz Ozwirk.
+
+This is no official HP documentation. It is just a simple paper
+which summarises the results of several nights of research for
+a program I'm writing. If you use any information contained in
+this document, you do it at your own risk.
+
+My special thanks go to Juha Husgavfel for his little program
+with the great feature of dumping all packets received and sent.
+That gave me the first push to have a closer look at the protocol,
+and to Harry Konstas, who taught me how to compute the CRC and
+who gave me a list of all functions of the filer. Even though
+these were only the function names, they gave me a basic idea of
+what a function might do.
+
+Please send comments, corrections and especially information on
+other functions of HP's filer to HOzwirk@msn.com
+
+ February 16, 1997
+
+

@@ -1,0 +1,510 @@
+----------------------------------------------------------------
+ DBView 2.0: HP200LX Database viewer                [HK:10/96]
+----------------------------------------------------------------
+
+ DBView is a database viewer for GDB/NDB/PDB database
+files, having the same look & feel as the built-in
+database application. It can also perform simple statistical
+calculations on selected fields with given criteria.
+
+The differences between DBView and the System Manager's DB
+application are:
+
+
+ * DBView can run in DOS,
+
+ * Has better searching capabilities with AND/OR operators,
+   speed-locate & find "Only" features.
+
+ * Opens database files for read-only, extending battery
+   life when viewing database files stored in a flashcard.
+   This also prevents possible file corruption.
+
+ * Performs simple statistical calculations: SUM, AVG, MIN
+   & MAX  on specified fields with given criteria.
+
+ * When used with HDM (a DOS application manager), it enables
+   you to load & view any of your database files with a press of
+   a single button. Please read document below for more details.
+
+ * You can specify a search string directly at the DOS prompt
+   when launching DBV.
+
+ * DBView can be used on your desktop computer by using the
+   INT5F HP200LX Graphics emulator (included in this ZIP).
+
+
+ New in this version:
+ --------------------
+
+ + Added SUM, MIN, MAX, AVG computing capabilities.
+ + Added field extraction feature.
+ + Added horizontal lines option.
+ + Implemented Right-Justify option for list-view.
+ + Added HOME key when viewing notes.
+
+ + Fixed bug when speed-locating strings containing commas.
+ + Fixed list-view column overlapping.
+ + Fixed a few other display glitches.
+ + Fixed Note (PGDN) bug.
+
+ + Included INT5F graphics driver to enable the use
+   of DBView on a desktop computer.
+
+
+ _______________
+ I. Installation
+
+ There are 5 files included in this archive:
+
+ + DBV.DOC:   The DBView documentation.
+ + DBV.EXE:   The DBView program.
+ + DBV.CFG:   The DBView configuration file.
+ + DBV.ICN:   The DBView icon.
+
+ + INT5F.ZIP: Graphics emulator to enable you to run DBView
+              on your desktop. Documentation for it is
+              available in INT5F.ZIP
+
+
+ DBView is a YAPA (Yet Another PAL Application<g>), and like
+all PAL applications, it's a DOS program. Simply copy the
+files of the archive in a directory of your choice. The
+configuration file DBV.CFG must always reside in the same
+directory as DBV.EXE.
+
+
+ NOTE: DBV requires at least 130k of memory to operate.
+       If you install DBV in System Manager, please remember
+       to add '|130' at the end of the name. For example,
+       if DBV is installed in A:\DBV, the System manager
+       entry will look like this:
+
+           a:\dbv\dbv.exe|130
+
+       The '|130' will reserve 130k of memory for DBV. For
+       more details on installing applications in System
+       manager please consult your HP200LX owner's manual.
+
+
+ You can also specify database filenames if you would like
+to have several System Manager DBV entries (one for each
+database file for example):
+
+           a:\dbv\dbv.exe myfile.gdb|130
+
+
+
+ Configuration:
+ --------------
+
+ DBV.CFG is the configuration file of DBView. You can use
+it to change some of the default parameters of DBView. At this
+moment, DBV.CFG is divided into 3 sections, [options], [paths]
+& [files]:
+
+
+[options]
+; Set to 1 to enable error beeps, 0 to disable them.
+beep=1
+; Set to 1 to enable search in note fields.
+SearchNotes=0
+; Set to 1 to enable horizontal lines separating records.
+HorizLines=0
+; Set to 1 to display numbers right-justified in list-view.
+RightJustify=0
+
+[paths]
+; set your database directory
+dbdir=c:\_dat
+
+[files]
+; filename of dump/extraction file
+DumpFile=dbv.sav
+
+
+ You can add comments anywhere in DBV.CFG provided that you
+start the lines with a semicolon.
+
+ NOTE: Normally DBV.CFG should be located in the same
+       directory as DBV.EXE. However, you can make DBV
+       find DBV.CFG from any directory, by just copying
+       DBV.CFG into the C:\_DAT directory.
+
+
+ There's also an icon provided in this archive if you wish to
+install DBView in the System Manager.
+
+
+_____________________
+II.Program operation.
+
+ You probably know how to use the System Manager's database
+application to create & view database files. DBView works
+very similar for viewing them.
+
+ DBView supports multiple card database files. These are
+database files having more then 1 page of record information
+(up to 4 max.). DBView will display the page number on the
+top status line. Pressing the PGUP/PGDN keys will enable you
+to view the other pages, when available.
+
+ * DBView cannot view password protected database files!
+   (will display Error#24 if file is password protected).
+
+
+ To run DBView from the DOS prompt simply type dbv <ENTER>.
+You may include a database filename at the command line if
+you wish, and DBView will run & load the specified database
+file. The command line arguments are:
+
+  dbv <dbfile> <search string>
+
+ where <dbvfile> is the name of a valid GDB, NDB or PDB file.
+If no extension is given, .GDB is taken as the default. You
+can also (optionally) specify a search string. DBV will launch
+and search for that string if you specify one.
+
+IMPORTANT: Software Carousel(tm) users may switch into a
+           DOS session, leaving the System Manager's database
+           application open. You can not load a database
+           file that is currently open by the SysMgr's DB
+           application. The following error message will be
+           displayed and DBV will quit if you attempt to do so:
+
+                 "Database file not closed?"
+
+ If the DATABASE application is open and using the file you
+wish to load in DBV, you must close the DATABASE application,
+and then use DBView to view it. You may also get this message
+if the DATABASE application hasn't closed the database file
+properly (when this happens the lookup table is missing in
+the file). To correct this, you must open the database file
+using the DATABASE application, and then close it by quitting
+DATABASE. This will do the necessary cleanup in the database
+file.
+
+   *** Now here's a solution to avoid the above problems:
+   ------------------------------------------------------
+   Since backups are always a good idea, why not use DBView on
+   your backup database files, and System manager's DB on the
+   original ones (when editing is needed).
+
+
+ DBView has 2 display modes: List view and record view. You
+can use the UP/DOWN arrows to select a record. To see the
+contents of a record press ENTER or F2. Most of the DBV
+functions can be accessed from the function keys. Some
+of the functions can also be accessed by the menus (please
+note that menus work only in list-view mode).
+
+Here's the description of the function keys for the list-view
+mode:
+
+
+ ARROWS:  The Up key browses into the database backwards.
+          The Down key browses forward. The current
+          record is displayed on the top status bar along
+          with the loaded database filename.
+
+ HOME:    Select the first record of the database.
+ END:     Select the last record of the database.
+
+ F1:      Simple help screen.
+ F2:      Same as ENTER, displays the selected record data.
+
+ F3:      Full screen note. The record's note (if any) will
+          be displayed in full.
+
+
+     NOTE: The current version of DBView still has a limited
+           way on viewing the complete note of a record.
+           (a multi-line field requires a lot of code<g>).
+           You can press the F3 key [more] to view the
+           rest of a large note. [HOME] or F4 will bring
+           you at the beginning of the note.
+
+
+ F4: Find feature. The find dialog will popup waiting for
+     the following input:
+
+     String1: String of text/numbers you wish to find in the
+              database file.
+
+     String2: Optional, second search string. If used, you
+              must select the searching method (logic):
+
+         AND: Searches for a match of both String1 & String2
+         OR:  Searches for a match of either String1 or String2
+
+
+         [x]: The 'include notes' checkbox toggles the search
+              mode to include notes while searching (slower).
+
+
+        NOTE: Hold down the ESC key to abort the search. DBView
+              will search only through the records of the
+              currently selected subset (all records by
+              default).
+
+     If a match is found, DBView will highlite the record. You
+     can then press ENTER to see its contents.
+
+ F5: Will search for the next match, and display it if found.
+
+ F6: Find "Only" feature. This search option will create
+     a subset of all matching records. You can return to
+     the previous subset by pressing F7, or even create
+     other subsets from the matching results by pressing
+     F6 as many times as you like.
+
+ F7: Change to a different subset of the database. The
+     default is 'all database items'.  Note that this will
+     affect the search, since it will search only through
+     the records of the selected subset.
+
+     NOTE: There may be ocassions where some subsets will not
+           appear in the subset selection window. This is
+           because the subset indexes are missing from the
+           database file. By simply opening the database
+           file with System Manager's database application
+           and viewing the 'missing' subsets, the file will
+           be updated and the missing subsets should then
+           appear in DBView's subset selection window.
+
+
+ F8: Dump the current record to a file (filename specified
+     in DBV.CFG) in ASCII (text) format.
+
+
+ F9: Open database. You can use this option to load another
+     database file into DBView.
+
+
+ There are some DBView features that can only be accessed
+by the menus. These include database calculations (explained
+further below), and field extraction.
+
+ MENU->Database->Extract field data:
+
+This feature can be used to extract the data from all the records,
+of a selected field into the DBV.SAV file. DBView will ask you
+for the field you wish to extract, and then extract it in ASCII
+format. You can only extract fields that contain numeric or text
+data (checkboxes and radio buttons cannot be extracted<g>.)
+Note that if DBV.SAV already exists, it will be over-written,
+not appended.
+
+
+ PRESSING ANY OTHER KEY:
+
+  Pressing any alphanumerical key activates the SPEED-LOCATE
+  feature. A small window will popup at the top of the screen,
+  and every keystroke you enter will appear in that window.
+  DBV will search for a match while you are typing. If no
+  match can be found a short beep will be heard. Please note
+  that the speed locate feature searches only through the
+  items of the first (left) column of the list view display.
+  (same as System Manager's database application).
+
+
+ Now in the record-view mode (F2), the following keys are active:
+
+ F1:        Small help screen.
+ F2/ESC:    Back to list view display mode.
+ F3:        View the record note (if any) in full screen.
+ F4:        Search for 1 or 2 strings in database (see above).
+ F5:        Find next match (see above).
+ F6/UP:     Select the previous record in the list.
+ F7/DOWN:   Select the next record in the list.
+ PGUP/PGDN: Select the page to view in a multiple-card database.
+
+
+
+___________________________________
+III. DBView COMPUTING CAPABILITIES.
+
+DBView has a small set of 4 statistical calculations that can
+be performed on a selected field, with given criteria. These
+features are only accessible from within the menus:
+
+
+ a) Set Criteria
+ ---------------
+
+If you don't use this option, DBView will perform the
+selected calculation on ALL database records of the CURRENT
+SUBSET. You can provide the following criteria if you want
+DBView to do the calculation based on records that only match
+the criteria you have entered.
+
+ The criteria is based on 3 values: First, the field that
+will be used to compare the criteria against. Then, you
+must provide one of the 10 relational operators (comparison
+between field & criteria). Finally, the criteria data that
+will be compared against the selected field using the
+selected relational operator. Here's the list of the possible
+relational operators:
+
+ NOP: No criteria - process all records.
+
+ String operators:
+
+  = : Field must match the given criteria.
+      ATTENTION: criteria string is CASE-SENSITIVE!
+
+ ~= : Criteria must match at least a PART of the field.
+      ATTENTION: criteria string is CASE-SENSITIVE!
+
+ Numeric operators:
+
+ <> : Field must not match given criteria.
+  < : Field numeric value must be smaller then criteria value.
+ <= : Field numeric value must be smaller or equal to criteria.
+  > : Field numeric value must be greater then criteria value.
+ >= : Field numeric value must be greater or equal to criteria.
+
+ Boolean operators:
+
+ ON : Checkbox or Radio button must be enabled (marked).
+ OFF: Checkbox or Radio button must be disabled (unmarked).
+
+
+ b) Calculations:
+ ----------------
+
+ All calculations will be performed on the current subset,
+and only with records that match the given criteria (or
+all records if no criteria are given).
+
+ SUM: Adds numeric data of the specified field and displays
+      the total.
+
+ AVG: Computes the average (SUM/n) of the specified field.
+ MIN: Find the MINimum (smallest) value of the specified field.
+ MAX: Find the MAXimum (largest) value of the specified field.
+
+
+
+ NOTES:
+ ------
+ >, >=, <, <= operators can only be used with numeric values.
+ ON, OFF operators must only be used with checkbox or radio
+ button types of fields.
+
+ DBView assumes that strings having the "hh:mm" format contains
+ time data, so it computes & shows the result in the same format.
+
+ DBView does not compute dates.
+
+
+
+                              ***
+
+________
+APPENDIX
+
+ INT5F.ZIP:
+ ----------
+
+ This file is included in this archive. It's a small TSR
+ which simulates the HP200LX graphics on desktop computers.
+ If you would like to use DBView on your desktop system,
+ please pkunzip this file and read the included documentation.
+ You can also use other PAL applications such as PalEdit
+ and HV with INT5F on your desktop.
+
+
+ ERROR CODES:
+ ------------
+
+ Here are listed a few usefull error codes that DBV may return:
+
+ Error #2 : Out of memory (may also display 'PALMEM fail: out of memory').
+ Error #4 : File read operation error (file corrupted?).
+ Error #5 : Index is missing from database file, must be refreshed
+            by System Manager's database application.
+
+ Error #7 : Not a database file.
+ Error #8 : World time database file - not supported.
+ Error #9 : Appointment book database file - not supported.
+ Error #14: Error opening database file (file not found?).
+ Error #24: Database file is password protected.
+
+
+ * If you get unexpected errors when using DBView within
+   System Manager, try to increase the amount of memory
+   on the application entry screen.
+
+
+ HDM USERS:
+ ----------
+
+ If you're using HDM, a DOS application manager written for
+the HP200LX palmtops (and also a PAL application) you can
+use it to display several database files in the icon screen,
+and open a database file by simply selecting its icon. In
+order for this to work, you must enter 'dbv <dbfile>' as
+DOS application names. Here's an example:
+
+ Press F2 in HDM and the 'New application' screen will appear.
+Enter the following in the entry fields:
+
+ APPLICATION NAME: Phonebook
+ PATH & FILENAME : a:\dbv\dbv
+ COMMAND TAIL    : c:\_dat\phone.pdb
+
+ Ofcourse, the 'PATH & FILENAME' line above assumes that DBView
+resides in a:\dbv directory, and your phone.pdb file in
+c:\_dat. You will need to enter your own paths in there.
+
+ Now this new entry in HDM will enable you to load & view your
+phonebook database with a press of a button. You can add as
+many entries like this one as you wish, one for each database
+file, and startup DBView with the selected database with
+a single keystroke.
+
+
+_______
+Credits
+
+ I would like to thank all the PAL contributors for providing
+the PAL library, specially Gilles Kohl, and Fred Kaufman
+for giving me the idea of this program. I would also like
+to thank ALL of you for your suggestions on improving DBV.
+
+
+ DBView is a freeware PAL application. DBView, like any program,
+may have bugs. Although I have tested DBView and use it with
+my own database files, I cannot guaranty that it's full-proof.
+so "use it at your own risk"! You can send me bug reports &
+comments at:
+
+
+   Harry Konstas
+
+   email:    72540.620@compuserve.com
+   web site: http://ourworld.compuserve.com/homepages/harry/
+
+
+   TODO list:
+   ----------
+
+ Sorry if some of your suggestions didn't make it in this
+version. There are *many* things I would like to add and
+improve in DBView, but unfortunately the memory requirements
+won't allow me to do so. DBView now needs at least 130k to
+run, and soon, if we add more stuff, we won't be able to use
+it within System Manager.
+
+So future releases would probably be only bug fixes, and
+maybe some minor additions or enhancements.
+
+
+   DBView 2.0
+   Portions copyright, the PAL Group. (c)1996
+
+
+                            ---
+
+

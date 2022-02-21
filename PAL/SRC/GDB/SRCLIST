@@ -1,0 +1,9 @@
+gdb\closedb.c
+gdb\getfield.c
+gdb\opendb.c
+gdb\readrec.c
+gdb\searchdb.c
+gdb\showrec.c
+gdb\showcard.c
+gdb\chgvpnt.c
+gdb\linkdef.c

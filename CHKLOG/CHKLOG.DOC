@@ -1,0 +1,421 @@
+
+                     ****************
+[72540,620]          * CheckLOG 3.4 *           August 7, 1994.
+                     ****************
+
+______________
+1.INTRODUCTION
+
+
+ CheckLOG is a checkbook management application designed for
+the HP100LX palmtop. You can manage all your accounts, with
+this easy to use program. CheckLOG was written entirely
+in Assembly Language which makes it very compact and fast.
+
+ CheckLOG has the 'look & feel' of the built-in HP100LX
+applications so it's a nice addition to the Program Manager.
+Best of all, it's Freeware!
+
+
+This version (3.4) has the following enhancements & corrections:
+
+a) Global protection. You can now lock the account so you
+   don't change something by mistake. You must unlock it
+   in order to do any modifications.
+
+b) Fixed the bug that was automatically reconciling a transaction
+   when editing.
+
+c) All transactions are now NOT reconciled by default.
+
+d) CheckLOG now brings you automatically to the last transaction
+   when you run the program.
+
+e) Replaced the Note field with the Name field in the .PRN file
+   creation.
+
+f) Quick-Unlock feature by just pressing SPACE-BAR followed by
+   the 'U' key.
+
+
+                              * * *
+
+
+
+  Here's what's included in the CHKLOG.ZIP file:
+
+        CHKLOG.COM      The program itself
+        CHKLOG.CDB      Sample database (account)
+        CHKLOG.ICN      Small icon for the program manager.
+        CHKLOG.DOC      This DOC file you're reading.
+
+  The program will also create CHKLOG.ENV (enviroment file)
+ in your C:\_DAT directory when executed.
+
+  The program can also create a comma-delimited file called
+ CHKLOG.LST which can be imported into LOTUS 123.
+ It can also create a CHKLOG.PRN file for printing.
+
+  You don't need any special setup to use this program. You
+ can put it in a flashcard if you wish, but it's much faster
+ on the drive C: or ramcard. After you installed the program
+ and you've checked it with the sample database, just erase
+ CHKLOG.CDB, then run the program again to create your
+ account database. When you create your account for the
+ first time, just 'DEPOSIT' the current balance of your
+ account to the database. You can also create your account
+ by just typing chklog <filename>, where <filename> is the
+ name of your account.
+
+___________________
+2.PROGRAM OPERATION
+
+  You can run CheckLOG like any other .COM program, from DOS
+ or from the program manager. You may also use the CHKLOG.ICN
+ icon if you run it from the program manager. See your 100LX
+ instruction book for more information on how to add an icon
+ to an application.
+
+  You can specify the database filename at the command line
+ when you run CheckLOG. The command line argument is as follows:
+
+ chklog <filename>          ( from the DOS prompt )
+
+ Example:
+
+ c:\>chklog myfile.cdb
+
+  In this example, CheckLOG will load and run 'myfile.cdb'
+ as an account database. Like that you can run the program
+ with the account database of your choice. When a filename
+ is specified at the command line, it becomes the default
+ filename of CheckLOG and it will be loaded the next time
+ you run the program, even if you don't specify it at the
+ command line anymore. If the file isn't found or doesn't
+ exist, it will be created.
+
+  It's a good idea to have meaningfull names for accound
+ databases. Here are some examples:
+
+ c:\>chklog visa        ( run checkLOG with VISA account)
+ c:\>chklog savings     ( run checkLOG with SAVINGS account )
+ c:\>chklog checking    ( run checkLOG with CHECKING account )
+
+  Remember that the filenames you will be using must not exceed
+ 8 characters. You can include an extension such as .CDB if
+ you like.
+
+  Before erasing the sample database (account) try the program
+ with it so you can learn to navigate through the program.
+ CheckLOG has the 'feel' of the built-in Database application
+ of the HP100LX. Use the arrows UP/DOWN to browse through the
+ account. Pressing TAB will display all the information
+ about the current high-lighted item. Pressing TAB in the entry
+ window will cycle through the input fields. The SPACE-BAR is
+ used for tagging/untagging the transactions.
+
+  On the right of the top line you can see the account name
+ (filename). You can use filenames  such as 'checking' or
+ 'visa'. I used CHKLOG.CDB as an example. CheckLOG saves
+ the complete path & filename to the CHKLOG.ENV file. The
+ path+filename is limited to only 40 characters. I keep
+ the program on a flashcard on drive A: and the database files
+ in the C:\_DAT directory for faster operation.
+
+  CheckLOG takes its currency symbol from the System Manager
+ file, SETUP.ENV located in the c:\_dat directory. Just go
+ to the Setup Menu in the System Manager, and select your
+ currency symbol (2 characters only) in the international option.
+
+
+  Here's a brief summary of the function keys:
+
+ F1  = Small Help screen.
+ F2  = Write a check. This takes $$$ out of your account. You
+       can enter a check # if you wish, but it's optional.
+       All check entries ARE NOT reconciled by default, since
+       the amount is taken out of your account on a later date.
+
+ F3  = Deposit $$$ to your account.
+ F4  = Withdrawal an amount from the current account, or
+       ATM (automatic teller machine withdrawal)
+
+ F5  = Transfer an amount to another account.
+       (same as withdrawal)
+
+ F6  = Bank's service charges.
+ F7  = Adds Bank's interest amount to your account.
+ F8  = View your current Balance.It also displays the
+       reconciled TOTAL of all the transactions marked
+       with the 'diamond' symbol, using the SPACE-BAR.
+
+ F9  = Page UP for browsing. You can also use PGUP key.
+ F10 = Page DOWN for browsing. You can also use PGDN key.
+
+ ESC = Quits the program.
+
+  V  = View option. Toggles transaction column display to
+       NOTE, NAME & TYPE fields.
+
+ DEL = Cancels the high-lighted transaction. The transaction
+       remains in the database but it is marked as 'CANCELLED'
+       and it is not calculated in the balance. It automaticly
+       balances the transaction history. The transaction
+       remains in the database for future reference.
+
+ENTER= Edits the high-lighted transaction. It automatically
+       balances the transaction history. If an invalid date
+       is entered, the current date will be written. In order
+       for the entered date to be accepted, you must press
+       F10 when finished editing.
+
+       Note: ENTER will react like the TAB key when the
+             account is locked. You MUST unlock the account
+             in order to be able to edit a transaction.
+
+  INS= Same as pressing 'I'.This let's you insert a new
+       transaction between two transactions. The new
+       transaction will be Inserted ABOVE the current
+       highlighted transaction. The date will be the same
+       as the highlighted item date, but you can change it
+       if you wish.
+
+SPACE= Tag / untag a transaction. This reconciles ANY entry.
+       The small diamond on the left of each entry tells you
+       that the transaction is reconciled. Pressing SPACE toggles
+       the state of the transaction.
+
+       Note: The Tagging function will NOT work if the account
+             is locked. You MUST unlock the account in order
+             to be able to tag/untag transactions. A message
+             will appear on the screen to tell you when you
+             try to tag/untag a transaction when the account
+             is locked, and asks you if you want to unlock it
+             by pressing the 'U' key. The account is ALWAYS
+             locked by default when you run the program.
+
+
+ TAB = View information about the current high-lighted
+       transaction. Same as ENTER when the account is locked.
+
+
+                       MENU OPERATIONS:
+                       ----------------
+
+ MENU or ALT opens the menu bar for the following operations:
+
+
+ ACCOUNT
+ -------
+
+ OPEN ANOTHER ACCOUNT: Open another (existing) account. Just
+                       enter the filename.
+
+ CREATE NEW ACCOUNT  : Create a new account. Just enter the
+                       filename. When opening a new account
+                       just 'DEPOSIT' the current balance
+                       of the new account.
+
+ CREATE .LST FILE    : Creates CHKLOG.LST which can be imported
+                       into LOTUS 123. When in LOTUS use the
+                       'File, Import, Numbers' to import the
+                       file CHKLOG.LST into the worksheet.Do
+                       not forget to adjust the columns of
+                       123 accordingly.
+
+ CREATE .PRN FILE    : Creates CHKLOG.PRN for printing. Just
+                       type  'type chklog.prn >prn'  at the
+                       dos prompt to print it. Don't forget
+                       to turn on the serial port of the HP100LX
+                       ( serctl/w ).
+
+ LOCK ACCOUNT        : This function locks (protects) your
+                       transactions by accidental modifications.
+                       When the account is locked, you won't be
+                       able to modify any transaction, but you
+                       are still able to enter new transactions.
+                       The account is always locked by default
+                       when you run the program.
+
+
+ UNLOCK ACCOUNT      : This function unlocks the account so you
+                       can do any modifications on the recorded
+                       transactions. The account will remain
+                       unlocked for the current session and
+                       lock itself again the next time you run
+                       the program. You can lock the account
+                       from within the program if you wish by
+                       using the LOCK ACCOUNT function. You
+                       can also unlock the account by pressing
+                       the 'U' key when asked by CheckLOG.
+
+ *Quick-Unlock*      : Press the SPACE-BAR followed by the 'U'
+                       key. It is much faster than going through
+                       the menu.
+
+
+ TRANSACTION:  The items in this window have the same functions
+ ------------  as the F2-F7,I, DEL & ENTER function keys.
+
+
+
+ SEARCH:
+ -------
+ CHECK #    : Search for a check number. If found, all the
+              information of that transaction will be displayed.
+ AMOUNT $   : Search for a transaction amount. If found all the
+              information of that transaction will be displayed.
+
+  * NOTE > The search function won't work if you have less
+           than 13 transactions in the account. (1 page).
+
+
+
+ QUIT:  Quits the program
+ -----
+
+ HELP
+ ----
+ HELP :  The 'tiny' help screen.
+ ABOUT:  'About the program' screen.
+
+
+_____________________
+3.PROGRAM LIMITATIONS
+
+
+  a) CHECK number           : 0-9999
+  b) Number of accounts     : Your available disk space.
+
+  c) Max. transaction amount: $ +/- 999,999.99
+  d) Max. account balance   : $  +7,999,999.99
+  e) Min. account balance   : $  -2,000,000.00
+
+  f) Min. / Max. dates      : 01-01-1981 to 12-31-2079
+                              Only the format mm-dd-yyyy is
+                              supported.
+
+  g) Currency symbols       : Taken from System Manager. Only 2
+                              characters are allowed.
+
+  h) Number of transactions : 0-65535 (around 179 years of
+                              information if you make 1
+                              transaction per day). Each
+                              transaction takes 60 bytes of
+                              disk space.
+
+_______________
+4.SPECIAL NOTES
+
+
+ * Exceeding the balance limits (-2,000,000 > +7,999,999.99)
+   will display wrong values but won't affect program operation.
+   In other words, this program is not written for VERY rich or
+   VERY poor people!
+
+ * Exceeding the maximum transaction limit, the program will
+   ignore the 'extra' most significant digits. People who
+   win a lottery ticket of more than $999,999.99 will have
+   to enter this amount doing 2 deposits.
+
+ * Entering an invalid date will default to current date. You
+   must press F10 when you complete editing a date in order
+   to change the date. Pressing Enter will keep the default
+   date.
+        
+ * The program will BEEP when it displays a negative balance
+   to catch your attention.
+
+ * Since the database file is growing bigger & bigger with
+   every transaction, it's a good idea to copy it to another
+   'archive' filename and restart again the account by doing
+   a 'DEPOSIT' of its current balance. You can do that when
+   you feel that your database file is to large and it takes
+   too much time to edit a transaction.
+
+ * If you ever get a 'Corrupted .CDB (database) file' error,
+   it means that : a) Your database is somehow corrupted, or
+   b) you loaded a non-CheckLOG database format file into
+   CheckLOG. To be able to run the program again, just delete
+   the CHKLOG.ENV in the C:\_DAT directory because it holds the
+   name of the last file used. You can also delete or rename the
+   corrupted database.
+
+ * You can PKLITE(tm) the CHKLOG.COM file so it will take less
+   disk space. When Pklited, it takes about 10k of disk space.
+
+___________________
+5.ABOUT THE PROGRAM
+
+
+  CheckLOG was written on a 2MB HP100LX and it has 6005 lines
+ of assembly language (8088 code). It will ONLY work in a
+ HP100LX. Trying to run it on a PC will give an error message.
+
+  This program is freeware and comes with no warranties, it
+ is given away as-is. I can not be held responsible for any
+ possible data-loss when using this program.
+        
+  I know that I said many times that 'this should be the final
+ version of CheckLOG', but as you've just seen, here's another
+ one. But like I said before, since I never expected to go this
+ far with this program, and never imagined it would have all
+ these functions, the structure of the program has become a
+ huge 'spaggetti' from all the 'patching' I've done by adding
+ these functions. Also, the program is quite big, around 115
+ pages when printed, and difficult to work with because of
+ the patched structure. There will probably be other versions
+ but nothing major, only minor improvements. So I leave you
+ now with this version 3.4 for the moment, but I'm still
+ listening for any comments or ideas that you might have.
+
+
+
+ Special Thanks:
+
+ 1) All of the people who are using this program and gave
+    me many suggestions on enhancing CheckLOG.
+
+ 2) Everett Kaser for uploading the graphic functions
+    information of the HP100LX on the HPHAND forum,
+
+ 3) Fred Kaufman for his Beta-testing & great suggestions
+    for this program.
+
+ 4) Richard Rae, David C.Diemer and Iver Erling Aarva from
+    the HPHAND forum of CompuServe for their suggestions,
+    testing, and ideas on making CheckLOG better to use.
+    Thank you guys! I had lot's of fun writing it!
+
+
+
+
+                         * * *
+
+
+  CheckLOG may be distributed freely with no charge. Please
+ keep it in this .ZIP format when you distribute it. If you
+ use the program you can send me a  postcard if you like
+ at the following address:
+
+              > Harry Konstas
+                VIDEOCAM ElECTRONICS INC.
+                3405 Cartier BLVD.
+                Chomedey, LAVAL
+                QUEBEC (PQ) CANADA
+                H7V-1K3
+                
+
+   If you have questions or Comments you can find me in the
+  HPHAND forum of CompuServe. Great care has been taken to
+  insure that there are no bugs, but if you find any, please
+  report them to me. I try to Log-on daily.
+
+       My CIS ID is: 72540,620
+       My Name     : Harry Konstas
+
+               
+
+
+                            -----
+

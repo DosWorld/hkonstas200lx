@@ -1,0 +1,216 @@
+!short:
+!short:^u File Selection and directory utilities
+^u File Selection and directory utilities
+
+The routines in this module provide you with the CUA file
+selection box of the built-in applications. The main routine
+is FileSelect, but since its support routines may come in
+handy as well (not all compilers have them, and not all
+do so in the same way), they are provided here as well.
+
+Available Functions:
+
+  - FileSelect   : Bring up the file selection dialog
+  - PalGetDisk   : Get current disk drive
+  - PalSetDisk   : Set current disk drive
+  - PalGetCurDir : Get current directory of given drive
+  - PalChDir     : Change to new directory/path
+
+!short: FileSelect           Display file selection dialog
+   NAME
+      FileSelect
+
+   DESCRIPTION
+      Use FileSelect to let the user browse the file system and
+      specify a file to load, save or simply locate.
+
+   SYNOPSIS
+      #include "pal.h"
+      int FileSelect(char *Title, char *Path, char *Ext,
+                     char *Dest, DIALOG *pDlg)
+
+   INPUTS
+      Title     - the string to be displayed in the caption bar
+                  of the dialog
+
+      Path      - initial directory that should be displayed
+
+      Ext       - initial pattern, e.g. *.TXT
+
+      Dest      - a pointer to a buffer of sufficient space that
+                  will receive the filename the user selected,
+                  if any. (provide at least 65 chars)
+
+      pDlg      - optional pointer to a dialog definition. If you
+                  pass NULL, the default dialog FselDlg will be
+                  used automagically. If you pass a pointer to a
+                  dialog of your own, it has to fulfill to the
+                  following conditions:
+
+                The first six items are fixed as follows:
+
+                #0: an edit item, will receive the path and filename
+                #1: static item, will be used to display the directory
+                #2: Files listbox
+                #3: Directory listbox
+                #4: OK button (needs IF_RET flag)
+                #5: Cancel button (needs IF_ESC flag)
+
+                You can add any number of items, but these must be there,
+                must be the first, and must be in this order.
+
+   RETURN VALUE
+      FileSelect returns DN_OK when the OK button, F10, or
+      the RETURN key (inside the files listbox) was pressed. It
+      will return DN_ESC for the CANCEL button or the ESC or F9
+      key.
+
+   NOTE
+      If you pass your own dialog that has elements capable of
+      requesting the end of the dialog (like pushbuttons,
+      listboxes), be sure to check for their return values and
+      handle them properly.
+
+      The built-in file selection dialog is called FselDlg - if
+      you want to modify it. You should be knowledgeable about
+      the DIALOG and DLGITEM structures when doing so.
+
+
+   SAMPLE
+      char FileName[80];
+      int ret;
+
+      ret  = FileSelect(" Select database ", "c:\\_dat",
+                        "*.pdb", FileName, NULL);
+      if(ret != DN_OK) return FALSE;
+
+
+!Seealso: DIALOG DLGITEM PalGetDisk PalSetDisk PalGetCurDir PalChDir
+
+!short: PalGetDisk           Retrieve current disk drive
+   NAME
+      PalGetDisk
+
+   DESCRIPTION
+      PalGetDisk will return the number of the currently logged disk
+      drive as an integer, starting with 0 for drive A:
+
+   SYNOPSIS
+      #include "pal.h"
+      int PalGetDisk(void)
+
+   INPUTS
+      None.
+
+   RETURN VALUE
+      Returns the currently logged disk drive:
+        A: == 0
+        B: == 1
+        C: == 2
+
+        etc.
+
+   SAMPLE
+      int Drive;
+
+      Drive = PalGetDisk();
+      MsgBox(" Note ", "Current drive is %c: !", NULL, " OK ", Drive+'A');
+
+!Seealso: FileSelect PalSetDisk PalGetCurDir PalChDir
+
+!short: PalSetDisk           Set current disk drive
+   NAME
+      PalSetDisk
+
+   DESCRIPTION
+      PalSetDisk will set the currently logged disk drive as an
+      integer, starting with 0 for drive A:
+
+   SYNOPSIS
+      #include "pal.h"
+      int PalSetDisk(void)
+
+   INPUTS
+      Disk  -  the drive number to log to:
+        A: == 0
+        B: == 1
+        C: == 2
+
+        etc.
+
+   RETURN VALUE
+      None.
+
+   SAMPLE
+      int Drive;
+
+      Drive = PalGetDisk();
+      Drive = MenuSelect("&A|&B|&C|&D|&E|&F|&G", 10, 10, Drive, 0);
+      if(Drive >= 0) PalSetDisk(Drive);
+
+!Seealso: FileSelect PalGetDisk PalGetCurDir PalChDir
+
+!short: PalGetCurDir         Get current directory of a given drive
+   NAME
+      PalGetCurDir
+
+   DESCRIPTION
+      PalGetCurDir will return the current directory of a give drive.
+
+   SYNOPSIS
+      #include "pal.h"
+      int PalGetCurDir(int Drive, char *Dest)
+
+   INPUTS
+      Drive  -  the drive number of which you want the directory
+
+         Current  == -1
+             A:   ==  0
+             B:   ==  1
+             C:   ==  2
+           etc.
+
+      Dest   -  a buffer where the current directory will be stored.
+                Should have at least 65 characters available.
+
+   RETURN VALUE
+      TRUE if successful
+
+   NOTE
+      Pass -1 as the drive number if you're interested in the current
+      directory of the current drive. PalGetCurDir(-1, buffer) is
+      equivalent to PalGetCurDir(PalGetDisk(), buffer);
+
+   SAMPLE
+      char buf[80];
+
+      PalGetCurDir(-1, buf);
+      MsgBox(" Note ", "Current directory is|%s", NULL, " OK ", buf);
+
+!Seealso: FileSelect PalGetDisk PalSetDisk PalChDir
+
+!short: PalChDir         Change directory of current drive
+   NAME
+      PalChDir
+
+   DESCRIPTION
+      PalChDir will change the current directory of the current drive,
+      just like the DOS 'CD' function does.
+
+   SYNOPSIS
+      #include "pal.h"
+      int PalChDir(char *Path)
+
+   INPUTS
+      Path  -  the directory that you want to switch to.
+
+   RETURN VALUE
+      TRUE if successful
+
+   SAMPLE
+      PalSetDisk('C'-'A'); /* log to drive C: */
+      PalChDir("\\_DAT");  /* change to the \_DAT subdirectory */
+
+!Seealso: FileSelect PalGetDisk PalSetDisk PalGetCurDir
+
+

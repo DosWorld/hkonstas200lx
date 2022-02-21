@@ -1,0 +1,58 @@
+
+This small set of GDB database access functions was written during the
+development of DBView. They are written to work in conjuction with
+the PAL development kit (as an add-on). They permit easy read-only
+access of GDB/PDB database files. I decided to release what I currently
+have, if it can be of any help or interest to anyone to use. Please note
+that I have only tested them with the Borland TC & MIC PowerC
+compilers.
+
+
+INSTALLATION PROCEDURE:
+-----------------------
+
+1. Add the following line into the PAL.H header file, located at
+   the ../SRC/INC subdirectory of your PAL tree:
+
+   #include "palgdb.h"
+
+2. Copy the PALGDB.H file (included in this archive) into
+   the same (../SRC/INC) directory as PAL.H.
+
+3. The next step is to add the following lines into your SRCLIST file
+   located into ../PAL/SRC subdirectory:
+
+        gdb\closedb.c
+        gdb\getfield.c
+        gdb\opendb.c
+        gdb\readrec.c
+        gdb\searchdb.c
+        gdb\showrec.c
+        gdb\showcard.c
+        gdb\chgvpnt.c
+        gdb\linkdef.c
+
+4. And finally, rebuilt your PAL library files by running PM from the
+   ../PAL/SRC subdirectory.
+
+
+ADDITIONAL NOTES:
+-----------------
+
+The SAMPLES.ZIP file contains 2 small database utilities which
+demonstrate the use of the functions. The PALGDB.DOC file
+explains in detail every function.
+
+You can email me comments or questions regarding these functions at:
+
+
+ 72540.620@compuserve.com
+
+or:
+
+ http://ourworld.compuserve.com/homepages/harry
+
+
+ Harry Konstas
+ Jan. 13, 1997
+

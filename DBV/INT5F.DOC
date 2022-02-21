@@ -1,0 +1,127 @@
+-----------------------------------------------------------
+INT5fh Vr.1.0: HP200LX Graphics driver for PAL applications
+-----------------------------------------------------------
+
+- What is INT5f?
+----------------
+
+It's a small TSR (resident program) that enables most
+PAL written applications for the HP100/200LX palmtops
+to be used on your desktop. It does that by emulating
+the graphics of the HP palmtop.
+
+INT5F can run on any IBM compatible computer, using any
+cpu (8088->Pentium), and a CGA or VGA display. 486
+(or pentium) is recommended for faster screen output,
+since all the graphics are emulated by software.
+
+HV, the famous HTML viewer for the HP100/200LX palmtops
+(written by Andreas Garzotto) is one of the many PAL
+applications that can now be used on the desktop. PalEdit,
+and DBView have also been successfully tested on the
+desktop using INT5F.
+
+When used in VGA mode, future PAL applications will take
+advantage of this mode and display more information
+(vertically) on the screen.
+
+
+- How do I use it?
+------------------
+
+The easiest way is to simply run INT5f /c and then
+your PAL application (e.g: HV.EXE). When you
+quit your application, run INT5f /u so it unloads
+itself from the memory. The best thing to do is to
+create a small batch file that does this automatically:
+
+ int5f /c
+ hv.exe
+ int5f /u
+
+There are a few command-line parameters available with
+INT5f to launch it in different video modes. Type INT5F
+with no arguments to see the following help screen:
+
+-----------------------------------------------------------------
+HP200LX INT5fh CGA Graphics driver for PAL applications.
+Vr.1.0 (09/96). Freeware by Harry Konstas.
+
+ USAGE: int5f [switches]  ex: int5f /c
+
+  Command line switches:
+   /v = Install in VGA mode.
+   /c = Install in CGA mode (default).
+   /r = Install in reverse VGA mode.
+   /i = Install in inverse CGA mode.
+   /u = Uninstall INT5F driver from memory.
+
+-----------------------------------------------------------------
+
+INT5f /v launces INT5f in VGA mode. Some PAL applications now
+auto-detect this mode and use the display accordingly. The
+/r and /i switches are used to invert the display output
+(black on white background instead of white on black).
+
+Future releases of INT5F will have the ability to load
+external FCL fonts (using Gilles kohl's famous font loader
+for the HP palmtops) or .HFN font files.
+
+A word of CAUTION: There maybe some PAL applications which
+are using special 'hardware' calls on the palmtop. Such
+applications may lock-up your system. Typical PAL applications
+such as HV, DBView & PalEdit are using only the palmtop's
+graphics calls, and are safe to use with INT5f on your
+desktop.
+
+
+
+ACCESSING PAL APPLICATION MENUS:
+--------------------------------
+
+This really depends on the author of the PAL application.
+Currently, most PAL applications use CTRL-M, or ALT-F10 to
+activate the menus from the desktop.
+
+
+
+Programmer's corner:
+--------------------
+
+INT5F is a TSR emulating the INT5fh services of the palmtop,
+on the desktop. In this version, it takes up about 20k of
+RAM. Most of the memory is used by the 3 font bitmaps.
+
+All INT5f calls are supported except video mode 0x20
+(HP95LX). See GRAPH.DOC in the HP Developer's package
+for more information.
+
+ * The 3 HFN fonts that are included in this archive are
+   not the original HP200LX fonts - I have created a new
+   set by modifying the original fonts.
+
+
+DISCLAIMER:
+-----------
+
+I release INT5f as freeware. You may give away copies
+or bundle the INT5F.COM file with a commercial, shareware
+or freeware package.  You are not obligated to include
+this readme file - the program is pretty much self-explanatory.
+
+This product is freeware, so if you're experiencing problems,
+simply stop using it. :-) I cannot be held responsible for any
+data-loss resulting from its use. If you have questions or
+comments or bug reports, please contact me at:
+
+  email:
+
+ 72540.620@compuserve.com
+
+  on the web:
+
+ http://ourworld.compuserve.com/homepages/harry
+
+ Harry Konstas
+ September 7, 1996.
+
