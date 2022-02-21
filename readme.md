@@ -1,4 +1,8 @@
-# HP 200LX driver and Program Manager
+# HP 200LX applications
+
+Hello! I am download and keep this collection source code which
+can help investigate HP 200LX API and have a free GUI (for your
+desktop or application) without propriertal software.
 
 ## INT5F
 
@@ -44,7 +48,7 @@ utilities I have written using the PAL library, the Pal Font Editor
 
 # License 
 
-See description in each subdirectory.
+See description in each subdirectory. (in short words - freeware).
 
 (c) Copyright by Harry Konstas
 
