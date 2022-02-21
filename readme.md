@@ -2,7 +2,7 @@
 
 Hello! I am download and keep this collection source code which
 can help investigate HP 200LX API and have a free GUI (for your
-desktop or application) without propriertal software.
+desktop or application) without propriertal software and hardware.
 
 ![Screenshot](https://github.com/DosWorld/hkonstas200lx/raw/master/dbv.gif)
 
